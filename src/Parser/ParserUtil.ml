@@ -55,6 +55,8 @@ let ty_of_parse_ty ts pty =
     | Fq        -> T.mk_Fq
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
+    (*| Mat(a,b)  -> T.mk_Mat(create_lenvar ts a, create_lenvar ts b) *) (* TODO
+    *)
     | TySym(s)  ->
        (try
           let ts = Mstring.find s ts.ts_tydecls in
@@ -303,7 +305,7 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
-    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.TySym _)
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.TySym _ | Type.Mat _)
       , ([] | _ :: _ :: _) ->
       tacerror
         "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"

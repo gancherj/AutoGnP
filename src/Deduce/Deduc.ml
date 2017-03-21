@@ -89,6 +89,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
           Hty.add sub_solver e.e_ty (Se.singleton e)
       end
     | TySym _ | Int | Prod _ -> ()
+    | Mat _ -> () (* todo *)
   in
   let add_sub e = add_sub_solver e; add_sub_constr e in
   (* for everything except field expressions, there is no nesting in the
@@ -225,6 +226,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
+      | Mat _        -> assert false (* TODO *)
       | TySym _ | Prod _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in

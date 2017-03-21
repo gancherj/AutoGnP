@@ -531,6 +531,7 @@ let sub t =
         L.split
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
+    | Mat _ -> assert false (* TODO *)
     | Int | TySym _ -> assert false
   in
   let x1 = VarSym.mk "x" t in

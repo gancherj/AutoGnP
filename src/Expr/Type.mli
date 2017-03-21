@@ -23,6 +23,7 @@ type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
   | BS of Lenvar.id
   | Bool
+  | Mat of (Lenvar.id * Lenvar.id)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq

@@ -24,6 +24,7 @@ type ty = {
 and ty_node =
   | BS of Lenvar.id
   | Bool
+  | Mat of (Lenvar.id * Lenvar.id)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq
@@ -46,6 +47,7 @@ module Hsty = Hashcons.Make (struct
     | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
     | TySym ts1, TySym ts2           -> Tysym.equal ts1 ts2
     | Fq, Fq                         -> true
+    | Mat (a,b), Mat (c,d)           -> (Lenvar.equal a c) && (Lenvar.equal b d)
     | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
     | _                              -> false
 
@@ -57,6 +59,7 @@ module Hsty = Hashcons.Make (struct
     | TySym gv      -> hcomb 4 (Tysym.hash gv)
     | Fq            -> 5
     | Prod ts       -> hcomb_l hash_ty 6 ts
+    | Mat (a,b)     -> hcomb 8 (hcomb (Lenvar.hash a) (Lenvar.hash b))  
     | Int           -> 7
 
   let tag n t = { t with ty_tag = n }
@@ -81,6 +84,8 @@ let mk_ty n = Hsty.hashcons {
 let mk_BS lv = mk_ty (BS lv)
 
 let mk_G gv = mk_ty (G gv)
+
+let mk_Mat n m = mk_ty (Mat (n,m))
 
 let mk_TySym ts = mk_ty (TySym ts)
 
@@ -109,6 +114,10 @@ let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
   | _      -> false
 
+let is_Mat ty = match ty.ty_node with
+  | Mat _ -> true
+  | _ -> false
+
 let destr_G_exn ty =
   match ty.ty_node with
   | G gv -> gv
@@ -118,6 +127,12 @@ let destr_BS_exn ty =
   match ty.ty_node with
   | BS lv -> lv
   | _     -> raise Not_found
+
+
+let destr_Mat_exn ty =
+  match ty.ty_node with
+  | Mat (a,b) -> (a,b)
+  | _         -> raise Not_found
 
 let destr_Prod_exn ty =
   match ty.ty_node with
@@ -139,6 +154,8 @@ let pp_group fmt gv =
 let rec pp_ty fmt ty =
   match ty.ty_node with
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
+  | Mat (a,b)         -> F.fprintf fmt "Mat_(%s)" ((Lenvar.name a) ^
+  (Lenvar.name b))
   | Bool              -> F.fprintf fmt "Bool"
   | Fq                -> F.fprintf fmt "Fq"
   | TySym ts          -> F.fprintf fmt "%s" (Tysym.name ts)

@@ -19,7 +19,7 @@ let _log_i = mk_log Bolt.Level.INFO
 let rec norm_type e =
   match e.e_ty.ty_node with
   | TySym _ | Fq | Bool | Int | BS _ -> e
-
+  | Mat _ -> e (* todo *)
   | G gv    -> mk_GExp_Gen gv (mk_GLog e)   (* g ^ (log x) *)
 
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_type (mk_Proj i e)) lt)
