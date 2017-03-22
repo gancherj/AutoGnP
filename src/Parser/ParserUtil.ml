@@ -55,8 +55,7 @@ let ty_of_parse_ty ts pty =
     | Fq        -> T.mk_Fq
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
-    (*| Mat(a,b)  -> T.mk_Mat(create_lenvar ts a, create_lenvar ts b) *) (* TODO
-    *)
+    | Mat(a,b)  -> T.mk_Mat (create_lenvar ts a) (create_lenvar ts b)
     | TySym(s)  ->
        (try
           let ts = Mstring.find s ts.ts_tydecls in

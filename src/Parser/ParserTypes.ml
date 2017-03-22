@@ -13,6 +13,7 @@ type parse_ty =
   | Bool
   | Fq
   | BS      of string
+  | Mat     of string * string
   | G       of string
   | TySym   of string
   | Prod    of parse_ty list

@@ -51,6 +51,7 @@ val mk_Fq      : ty
 val mk_Bool    : ty
 val mk_Prod    : ty list -> ty
 val mk_Int     : ty
+val mk_Mat     : Lenvar.id -> Lenvar.id -> ty 
 
 (* ** Indicator and destructor functions *)
 

@@ -119,6 +119,7 @@
       ; "Fq",                       TFQ                       (* kw: type        *)
       ; "Zq",                       TFQ                       (* kw: type        *)
       ; "Bool",                     TBOOL                     (* kw: type        *)
+      ; "Matrix",                   TMAT                      (* kw: type        *)
 
       (* operators *)
       ; "forall",                   FORALL                    (* kw: op          *)

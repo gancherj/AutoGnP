@@ -27,7 +27,7 @@
 (* ** Tokens for types *) */
 
 %token <string> TBS
-%token TBOOL TFQ
+%token TBOOL TFQ TMAT
 %token <string> TG
 
 /*----------------------------------------------------------------------
@@ -180,6 +180,7 @@ typ :
 | TBOOL                          { Bool }
 | i=TG                           { G(i) }
 | TFQ                            { Fq }
+| TMAT CARET n=ID m=ID           { Mat(n,m)  } 
 | LPAR l=seplist0(STAR,typ) RPAR { mk_Prod l }
 | i=ID                           { TySym(i) }
 | t=typ CARET n=NAT              { Prod(Util.replicate n t) }
