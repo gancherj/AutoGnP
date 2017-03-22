@@ -119,7 +119,6 @@
       ; "Fq",                       TFQ                       (* kw: type        *)
       ; "Zq",                       TFQ                       (* kw: type        *)
       ; "Bool",                     TBOOL                     (* kw: type        *)
-      ; "Matrix",                   TMAT                      (* kw: type        *)
 
       (* operators *)
       ; "forall",                   FORALL                    (* kw: op          *)
@@ -195,6 +194,7 @@ rule lex = parse
   (* Indexed types *)
   | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
   | "G"                         { TG("") }                    (* kw: type   *)
+  | "Matrix_"(simple_id as s1)","(simple_id as s2) {TMAT((s1,s2))}
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
 
   (* Indexed constants *)
