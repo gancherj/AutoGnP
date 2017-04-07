@@ -118,11 +118,11 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _   -> false
+  | FunCall _  (*| MatMult *) -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
-  | Xor | Land | Lor | GMult -> false
+  | Xor | Land | Lor | GMult | MatPlus -> false
 
 let is_field_exp e = match e.e_node with
   | Cnst(FNat _) -> true
@@ -307,6 +307,7 @@ and pp_nop_p ~qual above fmt (op,es) =
     pp_maybe_paren hv p (pp_list ops (pp_exp_p ~qual (NInfix(op)))) fmt es
   in
   match op with
+  | MatPlus -> pp_nary true MatPlus "@ + " (notsep above)
   | GMult  -> pp_nary true GMult  "@ * "   (notsep above)
   | FPlus  -> pp_nary true FPlus  "@ + "   (notsep above)
   | Xor    -> pp_nary true Xor    "@ ++ " (notsep above)
@@ -531,7 +532,7 @@ let sub t =
         L.split
           (L.mapi (fun i _ -> aux (mk_Proj i e1) (mk_Proj i e2)) lt) in
       mk_Tuple es, mk_Tuple zs
-    | Mat _ -> assert false (* TODO *)
+    | Mat _ -> failwith "mat sub" (* TODO *)
     | Int | TySym _ -> assert false
   in
   let x1 = VarSym.mk "x" t in

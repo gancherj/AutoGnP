@@ -163,7 +163,14 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       fail_parse (F.sprintf "undefined function symbol %s" s)
     | CFNat(i)       -> E.mk_FNat i
     | CB b           -> E.mk_B b
-    | Plus(e1,e2)    -> E.mk_FPlus [go e1; go e2]
+    | Plus(e1,e2)    -> 
+            let e1 = go e1 in
+            let e2 = go e2 in
+            begin match e1.E.e_ty.T.ty_node with
+            | T.Fq -> E.mk_FPlus [e1; e2]
+            | T.Mat _ -> E.mk_MatPlus [e1; e2] 
+            | _     -> tacerror "type error in addition of %a + %a" EU.pp_expr e1 EU.pp_expr e2
+            end
     | Minus(e1,e2)   -> E.mk_FMinus (go e1) (go e2)
     | Land(e1,e2)    -> E.mk_Land [go e1; go e2]
     | Lor(e1,e2)     -> E.mk_Lor [go e1; go e2]
@@ -198,6 +205,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       begin match e1.E.e_ty.T.ty_node with
       | T.Fq  -> E.mk_FMult [e1;e2]
       | T.G _ -> E.mk_GMult [e1;e2]
+      | T.Mat _ -> (*E.mk_MatMult [e1; e2]*) fail_parse "mat mult unimplemented"
       | _     -> tacerror "type error in multiplication of %a / %a" EU.pp_expr e1 EU.pp_expr e2
       end
   in

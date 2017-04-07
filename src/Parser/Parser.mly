@@ -42,8 +42,7 @@
 %token STAR
 %left  STAR
 
-%token LAND
-%left  LAND
+%token LAND %left  LAND
 
 %token LOR
 %left  LOR

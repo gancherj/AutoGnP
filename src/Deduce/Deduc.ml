@@ -89,7 +89,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
           Hty.add sub_solver e.e_ty (Se.singleton e)
       end
     | TySym _ | Int | Prod _ -> ()
-    | Mat _ -> () (* todo *)
+    | Mat _ -> () (* TODO *)
   in
   let add_sub e = add_sub_solver e; add_sub_constr e in
   (* for everything except field expressions, there is no nesting in the
@@ -138,7 +138,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       end
     | Nary(op,es) ->
       begin match op with
-      | Lor | Land | GMult -> add_sub e; List.iter (register_subexprs false) es
+      | Lor | Land | GMult | MatPlus -> add_sub e; List.iter (register_subexprs
+      false) es (*TODO move matplus elsewhere? *)
       | FPlus | FMult ->
         if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | Xor ->
@@ -212,6 +213,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Lor   -> constructn e es mk_Lor
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
+      | MatPlus -> () (*TODO*)
       end
     | V _
     | Cnst _ -> reg_constr e e

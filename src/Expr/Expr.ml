@@ -69,11 +69,13 @@ type op =
   | RoCall    of RoSym.t          (* random oracle call *)
   | MapLookup of MapSym.t         (* map lookup *)
   | MapIndom  of MapSym.t         (* map defined for given value *)
+  (*| MatMult*)
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
   | FPlus      (* plus in Fq *)
   | FMult      (* multiplication in Fq *)
+  | MatPlus
   | Xor        (* Xor of bitstrings *)
   | Land       (* logical and *)
   | Lor        (* logical or *)
@@ -115,6 +117,7 @@ let op_hash = function
   | FInv           -> 6
   | FDiv           -> 7
   | Eq             -> 8
+  (*| MatMult        -> 18*)
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
@@ -126,6 +129,7 @@ let op_hash = function
 let nop_hash = function
   | FPlus  -> 1
   | FMult  -> 2
+  | MatPlus -> 7
   | Xor    -> 3
   | Land   -> 4
   | Lor    -> 6
@@ -322,6 +326,26 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
+(* TODO mk_MatPlus, matmult *)
+
+let mk_MatPlus es =
+    match es with
+    | e :: _ ->
+       begin match e.e_ty.ty_node with
+       | Mat (n,m) -> mk_nary "mk_MatPlus" true MatPlus es (mk_Mat n m)
+       | _ -> failwith (F.sprintf "not matrix")
+       end
+    | _ -> failwith (F.sprintf "empty matplus")
+
+(*let mk_MatMult es =
+    match es with
+    | e :: _ ->
+       begin match e.e_ty.ty_node with
+       | Mat (n,m) -> mk_nary "mk_MatMult" true MatMult es (mk_Mat (n,m))
+       | _ -> assert false
+       end
+    | _ -> assert false*)
+
 let valid_Xor_type ty =
   let rec valid ty =
     match ty.ty_node with
@@ -355,6 +379,7 @@ let mk_Nary op es =
   match op with
   | FPlus -> mk_FPlus es
   | FMult -> mk_FMult es
+  | MatPlus -> mk_MatPlus es
   | Xor   -> mk_Xor   es
   | Land  -> mk_Land  es
   | Lor   -> mk_Lor  es

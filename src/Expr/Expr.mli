@@ -59,11 +59,13 @@ type op =
   | RoCall   of RoSym.t           (* random oracle call *)
   | MapLookup of MapSym.t         (* map lookup *)
   | MapIndom  of MapSym.t         (* map defined for given value *)
+  (*| MatMult*)
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
   | FPlus  (* plus in Fq *)
   | FMult  (* multiplication in Fq *)
+  | MatPlus
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
   | Lor    (* logical or *)
@@ -151,7 +153,7 @@ val mk_Xor         : expr list -> expr
 val mk_Land        : expr list -> expr
 val mk_Lor         : expr list -> expr
 val mk_InEq        : expr -> expr -> expr
-
+val mk_MatPlus     : expr list -> expr
 (* ** Generic functions on [expr]
  * ----------------------------------------------------------------------- *)
 

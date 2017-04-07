@@ -165,6 +165,8 @@ and mk_simpl_op ~strong op l =
 and mk_simpl_nop ~strong op l =
   match op with
 
+  | MatPlus -> mk_MatPlus l (* TODO? *)
+
   | FPlus  | FMult -> (* handled by mk_simpl_field_expr *)
     assert false
 
