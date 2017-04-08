@@ -118,7 +118,7 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _  (*| MatMult *) -> false
+  | FunCall _  | MatMult  -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -250,6 +250,8 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
+  | MatMult, [a;b] ->
+    pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | GExp _,   [a;b] ->
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)
             && above<>Infix(Eq,0) && above<>Infix(Eq,1))
@@ -297,7 +299,8 @@ and pp_op_p ~qual above fmt (op, es) =
   | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _), ([] | _::_::_)
   | (FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
-  | Ifte, ([] | [_] | [_;_] | _::_::_::_::_) ->
+  | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
+  | MatMult, ([] | [_] | _::_::_)->
     failwith "pp_op: invalid expression"
 
 (** Pretty-prints n-ary operator assuming that

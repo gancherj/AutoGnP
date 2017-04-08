@@ -69,7 +69,7 @@ type op =
   | RoCall    of RoSym.t          (* random oracle call *)
   | MapLookup of MapSym.t         (* map lookup *)
   | MapIndom  of MapSym.t         (* map defined for given value *)
-  (*| MatMult*)
+  | MatMult
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -117,7 +117,7 @@ let op_hash = function
   | FInv           -> 6
   | FDiv           -> 7
   | Eq             -> 8
-  (*| MatMult        -> 18*)
+  | MatMult        -> 18
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
@@ -203,6 +203,9 @@ exception TypeError of (ty * ty * expr * expr option * string)
 
 let ensure_ty_equal ty1 ty2 e1 e2 s =
   ignore (equal_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
+
+let ensure_matmult_compat ty1 ty2 e1 e2 s =
+    ignore (matmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -301,6 +304,12 @@ let mk_MapLookup h e =
 let mk_MapIndom h e =
   ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapIndom";
   mk_App (MapIndom(h)) [e] mk_Bool
+
+
+let mk_MatMult a b =
+    ensure_matmult_compat a.e_ty b.e_ty a (Some b) "mk_MatMult";
+    let (n,m) = matmult_get_dim a.e_ty b.e_ty in
+    mk_App (MatMult) [a;b] (mk_Mat n m)
 
 (* *** Nary mk functions *)
 

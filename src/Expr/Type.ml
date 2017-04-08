@@ -34,8 +34,23 @@ and ty_node =
 (* ** Equality, hashing, and hash consing *)
 
 let equal_ty : ty -> ty -> bool = (==)
+let matmult_compat_ty t1 t2 =
+    match t1.ty_node with
+    | Mat (_,b) -> (match t2.ty_node with
+                    | Mat (c,_) -> b == c
+                    | _ -> false)
+    | _ -> false
+
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
+
+let matmult_get_dim t1 t2 =
+    match t1.ty_node with
+    | Mat (a,_) -> (match t2.ty_node with
+                    | Mat (_,d) ->  (a,d)
+                    | _ -> assert false)
+    | _ -> assert false
+
 
 module Hsty = Hashcons.Make (struct
   type t = ty

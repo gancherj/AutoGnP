@@ -159,7 +159,7 @@ and mk_simpl_op ~strong op l =
 
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
-    | Eq     | Ifte   | Not ), _ ->
+    | Eq     | Ifte   | Not | MatMult), _ -> (*TODO what happens with matmult *)
     assert false
 
 and mk_simpl_nop ~strong op l =
