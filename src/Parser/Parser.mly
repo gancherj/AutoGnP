@@ -39,6 +39,9 @@
 %token PLUS XOR MINUS
 %left PLUS XOR MINUS
 
+%token TRANS
+%left TRANS
+
 %token STAR
 %left  STAR
 
@@ -246,6 +249,7 @@ expr8 :
 | IS_SET LPAR i=ID RPAR                   { SIndom(i,mk_Tuple []) }
 | i=MGET_ID l=seplist1(COMMA,expr) RBRACK { SLookUp(i,l) }
 | i=MVAR_ID                               { SLookUp(i,[mk_Tuple []]) }
+| TRANS e=expr8                           { Trans(e) }
 
 /*======================================================================
 (* * Oracle definitions *) */

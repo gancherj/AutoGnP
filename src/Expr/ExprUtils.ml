@@ -118,7 +118,7 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _  | MatMult | MatOpp  -> false
+  | FunCall _  | MatMult | MatOpp | MatTrans -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -254,6 +254,8 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | MatOpp,   [a]   ->
     pp_prefix MatOpp  "-"     ""    a
+  | MatTrans,   [a]   ->
+    pp_prefix MatTrans  "tr"     ""    a
   | GExp _,   [a;b] ->
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)
             && above<>Infix(Eq,0) && above<>Infix(Eq,1))
@@ -299,7 +301,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | MapIndom h, [e] ->
     F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
   | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
-  | (FOpp | FInv | Not | GInv | GLog _ | MatOpp), ([] | _::_::_)
+  | (FOpp | FInv | Not | GInv | GLog _ | MatOpp | MatTrans), ([] | _::_::_)
   | (FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
   | MatMult, ([] | [_] | _::_::_) ->

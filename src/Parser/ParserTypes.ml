@@ -36,6 +36,7 @@ type parse_expr =
   | Exp         of parse_expr * parse_expr
   | Log         of parse_expr
   | Opp         of parse_expr
+  | Trans       of parse_expr
   | Minus       of parse_expr * parse_expr
   | Inv         of parse_expr
   | Div         of parse_expr * parse_expr

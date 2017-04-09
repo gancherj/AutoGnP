@@ -71,6 +71,7 @@ type op =
   | MapIndom  of MapSym.t         (* map defined for given value *)
   | MatMult
   | MatOpp
+  | MatTrans
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -120,6 +121,7 @@ let op_hash = function
   | Eq             -> 8
   | MatMult        -> 18
   | MatOpp         -> 19
+  | MatTrans       -> 20
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
@@ -322,6 +324,9 @@ let mk_MatOpp a =
     let (n,m) = ensure_mat_ty a.e_ty in
     mk_App (MatOpp) [a] (mk_Mat n m)
 
+let mk_MatTrans a =
+    let (n,m) = ensure_mat_ty a.e_ty in
+    mk_App (MatTrans) [a] (mk_Mat m n)
 (* *** Nary mk functions *)
 
 let rec flatten nop es =

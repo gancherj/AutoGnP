@@ -131,6 +131,7 @@
       ; "log",                      LOG                       (* kw: op          *)
       ; "true",                     TRUE                      (* kw: op          *)
       ; "false",                    FALSE                     (* kw: op          *)
+      ; "tr",                       TRANS
       ]
 }
 

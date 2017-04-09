@@ -189,6 +189,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Exp(e1,e2)     -> E.mk_GExp (go e1) (go e2)
     | CGen(s)        -> E.mk_GGen (create_groupvar ts s)
     | CZ(s)          -> E.mk_Z (create_lenvar ts s)
+    | Trans(e)       -> E.mk_MatTrans (go e)
     | Quant(q,bd,pe) ->
       let b =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd
