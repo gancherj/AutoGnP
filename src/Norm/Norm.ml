@@ -157,9 +157,12 @@ and mk_simpl_op ~strong op l =
       else norm_type (mk_Ifte e1 e2 e3)
     ) else norm_type (mk_Ifte e1 e2 e3)
 
+  | MatMult, [e1;e2] -> mk_MatMult e1 e2 (*TODO what happens with matmult /
+  matopp *)
+  | MatOpp, [e] -> mk_MatOpp e
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
-    | Eq     | Ifte   | Not | MatMult), _ -> (*TODO what happens with matmult *)
+    | Eq     | Ifte   | Not | MatMult | MatOpp), _ -> 
     assert false
 
 and mk_simpl_nop ~strong op l =

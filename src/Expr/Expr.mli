@@ -60,6 +60,7 @@ type op =
   | MapLookup of MapSym.t         (* map lookup *)
   | MapIndom  of MapSym.t         (* map defined for given value *)
   | MatMult
+  | MatOpp
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
@@ -148,6 +149,7 @@ val mk_Eq          : expr -> expr -> expr
 val mk_Not         : expr -> expr
 val mk_Ifte        : expr -> expr -> expr -> expr
 val mk_MatMult     : expr -> expr -> expr
+val mk_MatOpp      : expr -> expr
 val mk_FPlus       : expr list -> expr
 val mk_FMult       : expr list -> expr
 val mk_Xor         : expr list -> expr

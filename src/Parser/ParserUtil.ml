@@ -177,7 +177,12 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Xor(e1,e2)     -> E.mk_Xor [go e1; go e2]
     | Eq(e1,e2)      -> E.mk_Eq (go e1) (go e2)
     | Ifte(e1,e2,e3) -> E.mk_Ifte (go e1) (go e2) (go e3)
-    | Opp(e)         -> E.mk_FOpp (go e)
+    | Opp(e)         -> let e = go e in begin 
+                        match e.E.e_ty.T.ty_node with
+                        | T.Fq -> E.mk_FOpp e
+                        | T.Mat _ -> E.mk_MatOpp e
+                        | _ -> tacerror "type error in opp: %a" EU.pp_expr e
+                        end
     | Inv(e)         -> E.mk_FInv (go e)
     | Not(e)         -> E.mk_Not (go e)
     | Log(e)         -> E.mk_GLog (go e)

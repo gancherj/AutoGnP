@@ -131,6 +131,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Eq | Not | Ifte ->
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
+      | MatOpp | MatMult -> List.iter (register_subexprs false) es (* TODO fix
+      *)
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this

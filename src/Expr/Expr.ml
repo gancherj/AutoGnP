@@ -70,6 +70,7 @@ type op =
   | MapLookup of MapSym.t         (* map lookup *)
   | MapIndom  of MapSym.t         (* map defined for given value *)
   | MatMult
+  | MatOpp
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -118,6 +119,7 @@ let op_hash = function
   | FDiv           -> 7
   | Eq             -> 8
   | MatMult        -> 18
+  | MatOpp         -> 19
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
@@ -206,6 +208,11 @@ let ensure_ty_equal ty1 ty2 e1 e2 s =
 
 let ensure_matmult_compat ty1 ty2 e1 e2 s =
     ignore (matmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
+
+let ensure_mat_ty ty =
+    match ty.ty_node with
+    | Mat (n,m) -> (n,m)
+    | _ -> failwith (fsprintf "Matrix expected: got %a" pp_ty ty)
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -311,6 +318,10 @@ let mk_MatMult a b =
     let (n,m) = matmult_get_dim a.e_ty b.e_ty in
     mk_App (MatMult) [a;b] (mk_Mat n m)
 
+let mk_MatOpp a =
+    let (n,m) = ensure_mat_ty a.e_ty in
+    mk_App (MatOpp) [a] (mk_Mat n m)
+
 (* *** Nary mk functions *)
 
 let rec flatten nop es =
@@ -346,14 +357,6 @@ let mk_MatPlus es =
        end
     | _ -> failwith (F.sprintf "empty matplus")
 
-(*let mk_MatMult es =
-    match es with
-    | e :: _ ->
-       begin match e.e_ty.ty_node with
-       | Mat (n,m) -> mk_nary "mk_MatMult" true MatMult es (mk_Mat (n,m))
-       | _ -> assert false
-       end
-    | _ -> assert false*)
 
 let valid_Xor_type ty =
   let rec valid ty =
