@@ -196,7 +196,7 @@ rule lex = parse
   (* Indexed types *)
   | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
   | "G"                         { TG("") }                    (* kw: type   *)
-  | "Matrix_"(mat_dim as s1)","(mat_dim as s2) {TMAT((s1,s2))}
+  | "Matrix_{"(mat_dim as s1)","(mat_dim as s2)"}" {TMAT((s1,s2))}
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
 
   (* Indexed constants *)

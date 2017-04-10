@@ -169,7 +169,7 @@ let pp_group fmt gv =
 let rec pp_ty fmt ty =
   match ty.ty_node with
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
-  | Mat (a,b)         -> F.fprintf fmt "Matrix_(%s)" ((Lenvar.name a) ^ "," ^
+  | Mat (a,b)         -> F.fprintf fmt "Matrix_{%s}" ((Lenvar.name a) ^ "," ^
   (Lenvar.name b))
   | Bool              -> F.fprintf fmt "Bool"
   | Fq                -> F.fprintf fmt "Fq"

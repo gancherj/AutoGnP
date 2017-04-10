@@ -257,7 +257,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | MatOpp,   [a]   ->
     pp_prefix MatOpp  "-"     ""    a
   | MatTrans,   [a]   ->
-    pp_prefix MatTrans  "tr"     ""    a
+    pp_prefix MatTrans  "tr "     ""    a
   | GExp _,   [a;b] ->
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)
             && above<>Infix(Eq,0) && above<>Infix(Eq,1))
