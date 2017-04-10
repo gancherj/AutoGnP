@@ -118,7 +118,7 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _  | MatMult | MatOpp | MatTrans -> false
+  | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -250,6 +250,8 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
+  | MatMinus, [a;b] ->
+    pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
   | MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | MatOpp,   [a]   ->
@@ -302,7 +304,7 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
   | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _ | MatOpp | MatTrans), ([] | _::_::_)
-  | (FMinus | FDiv | Eq | EMap _ | GExp _), ([] | [_] | _::_::_::_)
+  | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatMinus), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
   | MatMult, ([] | [_] | _::_::_) ->
     failwith "pp_op: invalid expression"

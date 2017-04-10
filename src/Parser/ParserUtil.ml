@@ -171,7 +171,15 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
             | T.Mat _ -> E.mk_MatPlus [e1; e2] 
             | _     -> tacerror "type error in addition of %a + %a" EU.pp_expr e1 EU.pp_expr e2
             end
-    | Minus(e1,e2)   -> E.mk_FMinus (go e1) (go e2)
+    | Minus(e1,e2)   -> 
+            let e1 = go e1 in
+            let e2 = go e2 in
+            begin match e1.E.e_ty.T.ty_node with
+            | T.Fq -> E.mk_FMinus (e1) (e2)
+            | T.Mat _ -> E.mk_MatMinus e1 e2
+            | _ -> tacerror "type error in subtraction of %a - %a" EU.pp_expr e1
+            EU.pp_expr e2
+            end
     | Land(e1,e2)    -> E.mk_Land [go e1; go e2]
     | Lor(e1,e2)     -> E.mk_Lor [go e1; go e2]
     | Xor(e1,e2)     -> E.mk_Xor [go e1; go e2]

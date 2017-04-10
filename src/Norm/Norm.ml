@@ -161,9 +161,10 @@ and mk_simpl_op ~strong op l =
   matopp *)
   | MatOpp, [e] -> mk_MatOpp e
   | MatTrans, [e] -> mk_MatTrans e
+  | MatMinus, [e1;e2] -> mk_MatMinus e1 e2
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
-    | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans), _ -> 
+    | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans | MatMinus), _ -> 
     assert false
 
 and mk_simpl_nop ~strong op l =

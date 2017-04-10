@@ -72,6 +72,7 @@ type op =
   | MatMult
   | MatOpp
   | MatTrans
+  | MatMinus
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -121,6 +122,7 @@ let op_hash = function
   | Eq             -> 8
   | MatMult        -> 18
   | MatOpp         -> 19
+  | MatMinus       -> 21
   | MatTrans       -> 20
   | Not            -> 9
   | Ifte           -> 10
@@ -327,6 +329,11 @@ let mk_MatOpp a =
 let mk_MatTrans a =
     let (n,m) = ensure_mat_ty a.e_ty in
     mk_App (MatTrans) [a] (mk_Mat m n)
+
+let mk_MatMinus a b =
+    let (n,m) = ensure_mat_ty a.e_ty in
+    ensure_ty_equal b.e_ty (mk_Mat n m) a None "mk_MatMinus";
+    mk_App (MatMinus) [a;b] (mk_Mat n m)
 (* *** Nary mk functions *)
 
 let rec flatten nop es =
@@ -351,7 +358,6 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
-(* TODO mk_MatPlus, matmult *)
 
 let mk_MatPlus es =
     match es with
@@ -361,6 +367,7 @@ let mk_MatPlus es =
        | _ -> failwith (F.sprintf "not matrix")
        end
     | _ -> failwith (F.sprintf "empty matplus")
+
 
 
 let valid_Xor_type ty =

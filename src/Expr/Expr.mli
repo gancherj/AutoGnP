@@ -62,6 +62,7 @@ type op =
   | MatMult
   | MatOpp
   | MatTrans
+  | MatMinus
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
@@ -150,6 +151,7 @@ val mk_Eq          : expr -> expr -> expr
 val mk_Not         : expr -> expr
 val mk_Ifte        : expr -> expr -> expr -> expr
 val mk_MatMult     : expr -> expr -> expr
+val mk_MatMinus    : expr -> expr -> expr
 val mk_MatTrans    : expr -> expr
 val mk_MatOpp      : expr -> expr
 val mk_FPlus       : expr list -> expr
