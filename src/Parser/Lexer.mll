@@ -138,6 +138,7 @@
 let blank = [' ' '\t' '\r' '\n']
 let newline = '\n'
 let simple_id = ['a'-'z']['a'-'z' '0'-'9']*
+let mat_dim = '1' | simple_id
 let number_id = ['a'-'z' '0'-'9']*
 let ident = ['a'-'z' 'A'-'Z' ] ['a'-'z' 'A'-'Z' '\'' '_' '0'-'9']*
 
@@ -195,7 +196,7 @@ rule lex = parse
   (* Indexed types *)
   | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
   | "G"                         { TG("") }                    (* kw: type   *)
-  | "Matrix_"(simple_id as s1)","(simple_id as s2) {TMAT((s1,s2))}
+  | "Matrix_"(mat_dim as s1)","(mat_dim as s2) {TMAT((s1,s2))}
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
 
   (* Indexed constants *)

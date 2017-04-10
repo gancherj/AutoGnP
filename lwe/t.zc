@@ -1,0 +1,14 @@
+
+operator Chi : BS_r -> Matrix_m,1.
+adversary A_lwe : (Matrix_n,m * Matrix_m,1) -> Bool.
+assumption LWE
+ [ A <-$ Matrix_n,m; s <-$ Matrix_n,1; r <-$ BS_r; b <- A_lwe(A, (tr A) * s + Chi(r));]
+ [ A <-$ Matrix_n,m; u <-$ Matrix_m,1; b <- A_lwe(A, u);].
+
+ operator bit_inj : BS_m -> Matrix_m,1.
+ adversary A_lhl : (Matrix_n,m * Matrix_n,1) -> Bool.
+ assumption LHL
+ [ A <-$ Matrix_n,m; e <-$ BS_m; b <- A_lhl(A, A * bit_inj(e));]
+ [ A <-$ Matrix_n,m; u <-$ Matrix_n,1; b <- A_lhl(A, u);].
+
+
