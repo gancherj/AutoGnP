@@ -1,0 +1,9 @@
+bound_succ
+[
+  x <-$ Matrix_{n,n};
+  let zz = 0_{n,n};
+  let z = x - x + x + (-x);
+  let y = x * z;
+] : not (z = zz).
+    norm.
+    bycrush.

@@ -48,6 +48,7 @@ type cnst =
   | FNat of int (* Natural number in field, always $\geq 0$ *)
   | Z           (* $0$ bitstring (type defines length) *)
   | B of bool   (* boolean value *)
+  | MatZero
 
 type op =
   (* bilinear groups *)
@@ -110,6 +111,7 @@ let cnst_hash = function
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
   | B b    -> if b then 4 else 5
+  | MatZero-> 6
 
 let op_hash = function
   | GExp gv        -> hcomb 1 (Groupvar.hash gv)
@@ -242,6 +244,8 @@ let mk_B  b = mk_Cnst (B b) mk_Bool
 let mk_True = mk_B true
 
 let mk_False = mk_B false
+
+let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
 
 (* *** Fixed arity mk functions *)
 

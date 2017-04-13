@@ -30,6 +30,7 @@ type parse_expr =
   | CB          of bool
   | CZ          of string
   | CGen        of string
+  | MatZ        of string * string
   | CFNat       of int
   | Mult        of parse_expr * parse_expr
   | Plus        of parse_expr * parse_expr

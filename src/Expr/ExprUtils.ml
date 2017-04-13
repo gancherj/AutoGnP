@@ -130,6 +130,17 @@ let is_field_exp e = match e.e_node with
   | Nary(o,_)    -> is_field_nop o
   | _            -> false
 
+let is_mat_op = function
+  | MatMult | MatOpp | MatTrans | MatMinus -> true
+  | _ -> false
+ 
+let is_mat_nop = fun x -> x = MatPlus
+
+let is_mat_exp e = match e.e_node with
+  | App(o,_) -> is_mat_op o
+  | Nary(o,_)-> is_field_nop o
+  | _ -> false
+
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
 
@@ -153,6 +164,7 @@ let pp_cnst fmt c ty =
   | FNat n -> F.fprintf fmt "%i" n
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
   | B b    -> F.fprintf fmt "%b" b
+  | MatZero -> F.fprintf fmt "0%%%a" pp_ty ty
 
 (** Constructor above the current expression. *)
 type 'a above =

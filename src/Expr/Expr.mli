@@ -39,6 +39,8 @@ type cnst =
   | FNat of int (* Natural number in field, always $\geq 0$ *)
   | Z           (* $0$ bitstring (type defines length) *)
   | B of bool   (* boolean value *)
+  | MatZero
+
 type op =
   (* bilinear groups *)
   | GExp of Groupvar.id           (* exponentiation in $\group_i$ *)
@@ -114,6 +116,7 @@ module Me : Map.S with type key = expr
 exception TypeError of (ty *  ty * expr * expr option * string)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
+val ensure_mat_ty : Type.ty -> Type.Lenvar.id * Type.Lenvar.id
 
 (* *** Constant mk functions *)
 
@@ -135,6 +138,7 @@ val mk_FNat        : int -> expr
 val mk_FOne        : expr
 val mk_FZ          : expr
 val mk_Z           : Lenvar.id -> expr
+val mk_MatZero     : Lenvar.id -> Lenvar.id -> expr
 val mk_B           : bool -> expr
 val mk_True        : expr
 val mk_False       : expr

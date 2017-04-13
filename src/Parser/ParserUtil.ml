@@ -196,6 +196,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Log(e)         -> E.mk_GLog (go e)
     | Exp(e1,e2)     -> E.mk_GExp (go e1) (go e2)
     | CGen(s)        -> E.mk_GGen (create_groupvar ts s)
+    | MatZ(s1,s2)    -> E.mk_MatZero (create_lenvar ts s1) (create_lenvar ts s2)
     | CZ(s)          -> E.mk_Z (create_lenvar ts s)
     | Trans(e)       -> E.mk_MatTrans (go e)
     | Quant(q,bd,pe) ->

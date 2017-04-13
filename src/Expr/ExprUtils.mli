@@ -60,6 +60,9 @@ val is_Not         : expr -> bool
 val is_field_op    : op -> bool
 val is_field_nop   : nop -> bool
 val is_field_exp   : expr -> bool
+val is_mat_op      : op -> bool
+val is_mat_nop     : nop -> bool
+val is_mat_exp     : expr -> bool
 val is_Land        : expr -> bool
 val is_Lor         : expr -> bool
 

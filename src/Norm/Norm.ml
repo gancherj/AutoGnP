@@ -7,6 +7,7 @@ open Expr
 open ExprUtils
 open Syms
 open Util
+open NormMat
 
 let mk_log level = mk_logger "Norm.Norm" level "Norm.ml"
 let _log_i = mk_log Bolt.Level.INFO
@@ -71,6 +72,10 @@ let rec norm_expr ~strong e =
   | Nary(nop, _) when is_field_nop nop -> mk_simpl_field_expr ~strong e
 
   | App(op, _)   when is_field_op op   -> mk_simpl_field_expr ~strong e
+
+  | Nary(nop, _) when is_mat_nop nop -> norm_mat_expr ~strong e
+
+  | App(op, _)   when is_mat_op op -> norm_mat_expr ~strong e
 
   | Nary(nop, l) -> mk_simpl_nop ~strong nop (List.map (norm_expr ~strong) l)
 
@@ -157,20 +162,16 @@ and mk_simpl_op ~strong op l =
       else norm_type (mk_Ifte e1 e2 e3)
     ) else norm_type (mk_Ifte e1 e2 e3)
 
-  | MatMult, [e1;e2] -> mk_MatMult e1 e2 (*TODO what happens with matmult /
-  matopp *)
-  | MatOpp, [e] -> mk_MatOpp e
-  | MatTrans, [e] -> mk_MatTrans e
-  | MatMinus, [e1;e2] -> mk_MatMinus e1 e2
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
     | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans | MatMinus), _ -> 
-    assert false
+            assert false (* field stuff handled by mk_simpl_field_expr; mat
+            stuff handled by mk_simpl_mat_expr*)
 
 and mk_simpl_nop ~strong op l =
   match op with
 
-  | MatPlus -> mk_MatPlus l (* TODO? *)
+  | MatPlus -> assert false (* handled by mk_simpl_mat_expr *)
 
   | FPlus  | FMult -> (* handled by mk_simpl_field_expr *)
     assert false
@@ -257,6 +258,7 @@ and mk_simpl_field_expr ~strong e =
     | _ -> norm_expr ~strong e
   in
   CAS.norm norm_subexpr e
+
 
 let norm_expr_weak = norm_expr ~strong:false
 

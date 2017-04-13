@@ -66,6 +66,7 @@
 %token <string> MGET_ID
 %token <string> MVAR_ID
 
+%token <string * string> MATZERO
 %token <string> GEN
 %token <string> ZBS
 
@@ -236,6 +237,7 @@ expr8 :
 | s1=ID BACKTICK s2=ID                    { V(Qual s1, s2) }
 | i=NAT                                   { CFNat(i) }
 | i=GEN                                   { CGen(i) }
+| i=MATZERO                               { let (a,b) = i in MatZ(a,b) }
 | i=ZBS                                   { CZ(i) }
 | TRUE                                    { CB(true) }
 | FALSE                                   { CB(false) }
