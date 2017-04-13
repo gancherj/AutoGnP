@@ -90,14 +90,17 @@ and norm_mult ~strong e e' =
         mk_MatZero a d
     else
 
-    let (e, e') = match (is_opp e), (is_opp e') with (* move opp up mult *)
-    | true, true -> (norm_mat_expr ~strong (extract_opp e), norm_mat_expr
-    ~strong (extract_opp e'))
-    | false, true -> (e, norm_mat_expr ~strong (extract_opp e'))
-    | true, false -> (norm_mat_expr ~strong (extract_opp e), e')
-    | false, false -> (e, e') in
-  
-    mk_MatMult e e'
+    let o1 = is_opp e in
+    let o2 = is_opp e' in
+
+    match o1,o2 with (* move opp up mult *)
+    | true, true -> let (e,e') = (norm_mat_expr ~strong (extract_opp e), norm_mat_expr
+    ~strong (extract_opp e')) in mk_MatMult e e'
+    | false, true -> let (e,e') = (e, norm_mat_expr ~strong (extract_opp e')) in
+    mk_MatOpp (mk_MatMult e e')
+    | true, false -> let (e,e') = (norm_mat_expr ~strong (extract_opp e), e') in
+    mk_MatOpp (mk_MatMult e e')
+    | false, false -> mk_MatMult e e' 
 
     (* - - a -> a *)
 and norm_opp ~strong e = 
