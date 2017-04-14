@@ -205,7 +205,7 @@ rule lex = parse
   (* Indexed constants *)
   | "L_"(ident as s)            { LIST(s) }                   (* kw: op     *)
   | "0_"(number_id as s)        { ZBS(s) }                    (* kw: op     *)
-  | "0_"                        { MATZERO }
+  | "0_{"                        { MATZERO }
   | "g"                         { GEN("") }                   (* kw: op     *)
   | "g_"(number_id as s)        { GEN(s) }                    (* kw: op     *)
 

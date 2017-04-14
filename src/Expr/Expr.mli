@@ -171,6 +171,7 @@ val mk_Land        : expr list -> expr
 val mk_Lor         : expr list -> expr
 val mk_InEq        : expr -> expr -> expr
 val mk_MatPlus     : expr list -> expr
+val mk_MatPlus_safe: expr list -> ty -> expr
 (* ** Generic functions on [expr]
  * ----------------------------------------------------------------------- *)
 

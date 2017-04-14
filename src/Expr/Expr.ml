@@ -404,7 +404,9 @@ let mk_MatPlus es =
        end
     | _ -> failwith (F.sprintf "empty matplus")
 
-
+let mk_MatPlus_safe es ty = match es with
+    | [] -> let (n,m) = ensure_mat_ty ty in mk_MatZero n m
+    | _ -> mk_MatPlus es
 
 let valid_Xor_type ty =
   let rec valid ty =

@@ -243,7 +243,7 @@ expr8 :
 | s1=ID BACKTICK s2=ID                    { V(Qual s1, s2) }
 | i=NAT                                   { CFNat(i) }
 | i=GEN                                   { CGen(i) }
-| MATZERO LCBRACE d1=dimexp COMMA d2=dimexp RCBRACE { MatZ(d1,d2)}                        
+| MATZERO d1=dimexp COMMA d2=dimexp RCBRACE { MatZ(d1,d2)}                        
 | i=ZBS                                   { CZ(i) }
 | TRUE                                    { CB(true) }
 | FALSE                                   { CB(false) }

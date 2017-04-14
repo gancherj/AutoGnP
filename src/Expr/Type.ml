@@ -78,7 +78,7 @@ let concat_compat_ty t1 t2 =
 
 let split_compat t =
     match t.ty_node with
-    | Mat (a,_) -> (match a with 
+    | Mat (_,a) -> (match a with 
                     | MDBase(_) -> false
                     | MDPlus(_) -> true)
     | _ -> false
