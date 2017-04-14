@@ -21,6 +21,19 @@ type mdim =
   | MDBase of Lenvar.id
   | MDPlus of mdim * mdim
 
+let rec mdim_equal d1 d2 = match d1,d2 with
+| MDBase(a), MDBase(b) -> Lenvar.equal a b
+| MDPlus(a,b), MDPlus(c,d) -> (mdim_equal a c) && (mdim_equal b d)
+| _, _ -> false
+
+let rec mdim_str d = match d with
+| MDBase (a) -> Lenvar.name a
+| MDPlus (a,b) -> (mdim_str a) ^ "+" ^ (mdim_str b)
+
+let rec mdim_hash d = match d with
+| MDBase(a) -> Lenvar.hash a
+| MDPlus(a,b) -> hcomb (mdim_hash a) (mdim_hash b)
+
 type ty = {
   ty_node : ty_node;
   ty_tag : int
@@ -28,7 +41,7 @@ type ty = {
 and ty_node =
   | BS of Lenvar.id
   | Bool
-  | Mat of (Lenvar.id * Lenvar.id)
+  | Mat of (mdim * mdim)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq
@@ -38,10 +51,10 @@ and ty_node =
 (* ** Equality, hashing, and hash consing *)
 
 let equal_ty : ty -> ty -> bool = (==)
-let matmult_compat_ty t1 t2 =
+let matmult_compat_ty t1 t2 = 
     match t1.ty_node with
     | Mat (_,b) -> (match t2.ty_node with
-                    | Mat (c,_) -> b == c
+                    | Mat (c,_) -> mdim_equal b c 
                     | _ -> false)
     | _ -> false
 
@@ -66,7 +79,7 @@ module Hsty = Hashcons.Make (struct
     | G gv1, G gv2                   -> Groupvar.equal gv1 gv2
     | TySym ts1, TySym ts2           -> Tysym.equal ts1 ts2
     | Fq, Fq                         -> true
-    | Mat (a,b), Mat (c,d)           -> (Lenvar.equal a c) && (Lenvar.equal b d)
+    | Mat (a,b), Mat (c,d)           -> (mdim_equal a c) && (mdim_equal b d)
     | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
     | _                              -> false
 
@@ -78,7 +91,7 @@ module Hsty = Hashcons.Make (struct
     | TySym gv      -> hcomb 4 (Tysym.hash gv)
     | Fq            -> 5
     | Prod ts       -> hcomb_l hash_ty 6 ts
-    | Mat (a,b)     -> hcomb 8 (hcomb (Lenvar.hash a) (Lenvar.hash b))  
+    | Mat (a,b)     -> hcomb 8 (hcomb (mdim_hash a) (mdim_hash b))  
     | Int           -> 7
 
   let tag n t = { t with ty_tag = n }
@@ -109,8 +122,6 @@ let rec ex_fst d = match d with
 | MDPlus (a,b) -> ex_fst a
 
 let mk_Mat n m = mk_ty (Mat (n,m)) 
-let mk_Mat_new d1 d2 = mk_Mat (ex_fst d1) (ex_fst d2)
-
 
 let mk_TySym ts = mk_ty (TySym ts)
 
@@ -176,11 +187,14 @@ let pp_group fmt gv =
   then F.fprintf fmt "G"
   else F.fprintf fmt "G_%s" (Groupvar.name gv)
 
+
+
+
 let rec pp_ty fmt ty =
   match ty.ty_node with
   | BS lv             -> F.fprintf fmt "BS_%s" (Lenvar.name lv)
-  | Mat (a,b)         -> F.fprintf fmt "Matrix_{%s}" ((Lenvar.name a) ^ "," ^
-  (Lenvar.name b))
+  | Mat (a,b)         -> F.fprintf fmt "Matrix_{%s}" ((mdim_str a) ^ "," ^
+  (mdim_str b))
   | Bool              -> F.fprintf fmt "Bool"
   | Fq                -> F.fprintf fmt "Fq"
   | TySym ts          -> F.fprintf fmt "%s" (Tysym.name ts)

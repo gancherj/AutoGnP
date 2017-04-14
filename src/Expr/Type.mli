@@ -24,11 +24,13 @@ type mdim =
   | MDBase of Lenvar.id
   | MDPlus of mdim * mdim
 
+val mdim_equal : mdim -> mdim -> bool
+
 type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
   | BS of Lenvar.id
   | Bool
-  | Mat of (Lenvar.id * Lenvar.id)
+  | Mat of (mdim * mdim)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq
@@ -42,7 +44,7 @@ val compare_ty : ty -> ty -> int
 
 (* matrix specific *)
 val matmult_compat_ty : ty -> ty -> bool
-val matmult_get_dim : ty -> ty -> (Lenvar.id * Lenvar.id)
+val matmult_get_dim : ty -> ty -> (mdim * mdim) 
 
 module Hsty : Hashcons.S with type t = ty
 
@@ -61,8 +63,7 @@ val mk_Fq      : ty
 val mk_Bool    : ty
 val mk_Prod    : ty list -> ty
 val mk_Int     : ty
-val mk_Mat     : Lenvar.id -> Lenvar.id -> ty 
-val mk_Mat_new     : mdim -> mdim -> ty 
+val mk_Mat     : mdim -> mdim -> ty 
 
 (* ** Indicator and destructor functions *)
 

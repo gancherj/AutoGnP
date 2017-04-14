@@ -59,7 +59,7 @@ let ty_of_parse_ty ts pty =
     | Fq        -> T.mk_Fq
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
-    | Mat(a,b)  -> T.mk_Mat_new (create_dimvar ts a) (create_dimvar ts b)
+    | Mat(a,b)  -> T.mk_Mat (create_dimvar ts a) (create_dimvar ts b)
     | TySym(s)  ->
        (try
           let ts = Mstring.find s ts.ts_tydecls in
@@ -200,7 +200,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Log(e)         -> E.mk_GLog (go e)
     | Exp(e1,e2)     -> E.mk_GExp (go e1) (go e2)
     | CGen(s)        -> E.mk_GGen (create_groupvar ts s)
-    | MatZ(s1,s2)    -> E.mk_MatZero_new (create_dimvar ts s1) (create_dimvar ts s2)
+    | MatZ(s1,s2)    -> E.mk_MatZero (create_dimvar ts s1) (create_dimvar ts s2)
     | CZ(s)          -> E.mk_Z (create_lenvar ts s)
     | Trans(e)       -> E.mk_MatTrans (go e)
     | Quant(q,bd,pe) ->
