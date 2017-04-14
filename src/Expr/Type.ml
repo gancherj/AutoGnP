@@ -24,6 +24,7 @@ type mdim =
 let rec mdim_equal d1 d2 = match d1,d2 with
 | MDBase(a), MDBase(b) -> Lenvar.equal a b
 | MDPlus(a,b), MDPlus(c,d) -> (mdim_equal a c) && (mdim_equal b d)
+                              || ( (mdim_equal a d) && (mdim_equal b c))
 | _, _ -> false
 
 let rec mdim_str d = match d with
@@ -33,6 +34,7 @@ let rec mdim_str d = match d with
 let rec mdim_hash d = match d with
 | MDBase(a) -> Lenvar.hash a
 | MDPlus(a,b) -> hcomb (mdim_hash a) (mdim_hash b)
+
 
 type ty = {
   ty_node : ty_node;
@@ -50,13 +52,43 @@ and ty_node =
 
 (* ** Equality, hashing, and hash consing *)
 
-let equal_ty : ty -> ty -> bool = (==)
+let equal_mat_ty t1 t2 =
+    match t1.ty_node, t2.ty_node with
+    | Mat (a,b), Mat(c,d) -> mdim_equal a c && mdim_equal b d
+    | _ -> assert false
+
+let equal_ty t1 t2 =
+    match t1.ty_node with
+    | Mat _ -> equal_mat_ty t1 t2
+    | _ -> (t1 == t2)
+
 let matmult_compat_ty t1 t2 = 
     match t1.ty_node with
     | Mat (_,b) -> (match t2.ty_node with
                     | Mat (c,_) -> mdim_equal b c 
                     | _ -> false)
     | _ -> false
+
+let concat_compat_ty t1 t2 =
+    match t1.ty_node with
+    | Mat (a,_) -> (match t2.ty_node with
+                    | Mat (c,_) -> mdim_equal a c
+                    | _ -> false)
+    | _ -> false
+
+let split_compat t =
+    match t.ty_node with
+    | Mat (a,_) -> (match a with 
+                    | MDBase(_) -> false
+                    | MDPlus(_) -> true)
+    | _ -> false
+
+let get_split_dim t =
+    match t.ty_node with
+    | Mat (_,a) -> (match a with
+                    | MDPlus(d1,d2) -> (d1,d2)
+                    | _ -> assert false)
+    | _ -> assert false
 
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
@@ -117,10 +149,6 @@ let mk_BS lv = mk_ty (BS lv)
 
 let mk_G gv = mk_ty (G gv)
 
-let rec ex_fst d = match d with
-| MDBase n -> n
-| MDPlus (a,b) -> ex_fst a
-
 let mk_Mat n m = mk_ty (Mat (n,m)) 
 
 let mk_TySym ts = mk_ty (TySym ts)
@@ -150,10 +178,6 @@ let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
   | _      -> false
 
-let is_Mat ty = match ty.ty_node with
-  | Mat _ -> true
-  | _ -> false
-
 let destr_G_exn ty =
   match ty.ty_node with
   | G gv -> gv
@@ -164,11 +188,6 @@ let destr_BS_exn ty =
   | BS lv -> lv
   | _     -> raise Not_found
 
-
-let destr_Mat_exn ty =
-  match ty.ty_node with
-  | Mat (a,b) -> (a,b)
-  | _         -> raise Not_found
 
 let destr_Prod_exn ty =
   match ty.ty_node with

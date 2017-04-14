@@ -188,6 +188,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Lor(e1,e2)     -> E.mk_Lor [go e1; go e2]
     | Xor(e1,e2)     -> E.mk_Xor [go e1; go e2]
     | Eq(e1,e2)      -> E.mk_Eq (go e1) (go e2)
+    | Concat(e1,e2)  -> E.mk_MatConcat (go e1) (go e2)
     | Ifte(e1,e2,e3) -> E.mk_Ifte (go e1) (go e2) (go e3)
     | Opp(e)         -> let e = go e in begin 
                         match e.E.e_ty.T.ty_node with
@@ -203,6 +204,8 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | MatZ(s1,s2)    -> E.mk_MatZero (create_dimvar ts s1) (create_dimvar ts s2)
     | CZ(s)          -> E.mk_Z (create_lenvar ts s)
     | Trans(e)       -> E.mk_MatTrans (go e)
+    | SplitLeft(e)   -> E.mk_MatSplitLeft (go e)
+    | SplitRight(e)   -> E.mk_MatSplitRight (go e)
     | Quant(q,bd,pe) ->
       let b =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd

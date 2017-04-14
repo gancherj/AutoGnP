@@ -118,7 +118,8 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus -> false
+  | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat |
+  MatSplitLeft | MatSplitRight -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -131,7 +132,8 @@ let is_field_exp e = match e.e_node with
   | _            -> false
 
 let is_mat_op = function
-  | MatMult | MatOpp | MatTrans | MatMinus -> true
+  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat | MatSplitLeft |
+  MatSplitRight -> true
   | _ -> false
  
 let is_mat_nop = fun x -> x = MatPlus
@@ -262,6 +264,12 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
+  | MatSplitLeft,   [a]   ->
+    pp_prefix MatSplitLeft  "sl "     ""    a
+  | MatSplitRight,   [a]   ->
+    pp_prefix MatSplitRight  "sr "     ""    a
+  | MatConcat, [a;b] ->
+    pp_bin (notsep above && above<>Infix(MatConcat,0)) MatConcat "@ || " a b
   | MatMinus, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
   | MatMult, [a;b] ->
@@ -315,8 +323,9 @@ and pp_op_p ~qual above fmt (op, es) =
   | MapIndom h, [e] ->
     F.fprintf fmt "in_dom(%a,%a)" (pp_exp_p ~qual PrefixApp) e MapSym.pp h
   | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
-  | (FOpp | FInv | Not | GInv | GLog _ | MatOpp | MatTrans), ([] | _::_::_)
-  | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatMinus), ([] | [_] | _::_::_::_)
+  | (FOpp | FInv | Not | GInv | GLog _ | MatOpp | MatTrans | MatSplitRight |
+  MatSplitLeft), ([] | _::_::_)
+  | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatMinus | MatConcat), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
   | MatMult, ([] | [_] | _::_::_) ->
     failwith "pp_op: invalid expression"

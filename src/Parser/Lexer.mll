@@ -132,6 +132,8 @@
       ; "true",                     TRUE                      (* kw: op          *)
       ; "false",                    FALSE                     (* kw: op          *)
       ; "tr",                       TRANS
+      ; "sl",                       SPLITLEFT
+      ; "sr",                       SPLITRIGHT
       ]
 }
 
@@ -186,6 +188,7 @@ rule lex = parse
   | ">"         { GREATER }
   | "."         { DOT }
   | "_"         { UNDERSCORE }
+  | "||"        { CONCAT }
 
   (* Keywords with special characters *)
   | "R:"        { INRIGHT }

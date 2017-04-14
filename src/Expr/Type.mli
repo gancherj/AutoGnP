@@ -38,13 +38,15 @@ and ty_node =
   | Int (* used during extraction *)
 
 val equal_ty   : ty -> ty -> bool
-val matmult_compat_ty : ty -> ty -> bool
+val concat_compat_ty : ty -> ty -> bool
+val split_compat : ty -> bool
 val hash_ty    : ty -> int
 val compare_ty : ty -> ty -> int
 
 (* matrix specific *)
 val matmult_compat_ty : ty -> ty -> bool
 val matmult_get_dim : ty -> ty -> (mdim * mdim) 
+val get_split_dim : ty -> (mdim * mdim) 
 
 module Hsty : Hashcons.S with type t = ty
 

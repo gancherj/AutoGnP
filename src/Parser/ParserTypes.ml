@@ -41,6 +41,8 @@ type parse_expr =
   | Log         of parse_expr
   | Opp         of parse_expr
   | Trans       of parse_expr
+  | SplitLeft   of parse_expr
+  | SplitRight  of parse_expr
   | Minus       of parse_expr * parse_expr
   | Inv         of parse_expr
   | Div         of parse_expr * parse_expr
@@ -51,6 +53,7 @@ type parse_expr =
   | Lor         of parse_expr * parse_expr
   | Xor         of parse_expr * parse_expr
   | Quant       of Expr.quant * (string list * string) list *  parse_expr
+  | Concat       of parse_expr * parse_expr
 
 let mk_Tuple = function [t] -> t | ts -> Tuple ts
 

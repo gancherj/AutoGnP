@@ -37,11 +37,10 @@
 
 %token <string> ID
 
-%token PLUS XOR MINUS
-%left PLUS XOR MINUS
+%token PLUS XOR MINUS CONCAT
+%left PLUS XOR MINUS CONCAT
 
-%token TRANS
-%left TRANS
+%token TRANS SPLITLEFT SPLITRIGHT
 
 %token STAR
 %left  STAR
@@ -214,6 +213,7 @@ expr1 :
 expr2 :
 | e1=expr2 EQUAL e2=expr2 { Eq(e1,e2) }
 | e1=expr2 NEQ   e2=expr2 { Not(Eq(e1,e2)) }
+| e1=expr2 CONCAT e2=expr2 { Concat(e1,e2) }
 | e=expr3                 { e }
 
 expr3 :
@@ -249,6 +249,8 @@ expr8 :
 | FALSE                                   { CB(false) }
 | s=ID l=paren_list1(COMMA,expr)          { SApp(s,l) }
 | MINUS e1=expr8                          { Opp(e1) }
+| SPLITLEFT e=expr8                       { SplitLeft(e) }
+| SPLITRIGHT e=expr8                      { SplitRight(e) }
 | NOT e=expr8                             { Not(e) }
 | LOG LPAR e1=expr RPAR                   { Log(e1) }
 | l=paren_list0(COMMA,expr)               { mk_Tuple l }

@@ -74,6 +74,9 @@ type op =
   | MatOpp
   | MatTrans
   | MatMinus
+  | MatConcat
+  | MatSplitLeft
+  | MatSplitRight
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -126,6 +129,9 @@ let op_hash = function
   | MatOpp         -> 19
   | MatMinus       -> 21
   | MatTrans       -> 20
+  | MatConcat      -> 21
+  | MatSplitLeft   -> 22
+  | MatSplitRight  -> 23 
   | Not            -> 9
   | Ifte           -> 10
   | EMap es        -> hcomb 11 (EmapSym.hash es)
@@ -215,6 +221,12 @@ let ensure_ty_equal ty1 ty2 e1 e2 s =
 let ensure_matmult_compat ty1 ty2 e1 e2 s =
     ignore (matmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
+let ensure_concat_compat ty1 ty2 e1 e2 s =
+    ignore (concat_compat_ty ty1 ty2 || raise (TypeError(ty1, ty2, e1, e2, s)))
+
+let ensure_split_compat ty e s =
+    ignore (split_compat ty || raise (TypeError(ty, ty, e, None, s)))
+ 
 let ensure_mat_ty ty =
     match ty.ty_node with
     | Mat (n,m) -> (n,m)
@@ -245,9 +257,6 @@ let mk_True = mk_B true
 
 let mk_False = mk_B false
 
-let rec ex_fst d = match d with
-| MDBase n -> n
-| MDPlus (a,b) -> ex_fst a
 
 let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
 
@@ -338,10 +347,29 @@ let mk_MatTrans a =
     let (n,m) = ensure_mat_ty a.e_ty in
     mk_App (MatTrans) [a] (mk_Mat m n)
 
+let mk_MatSplitLeft a =
+    ensure_split_compat a.e_ty a "mk_MatSplitLeft";
+    let (n, _) = ensure_mat_ty a.e_ty in
+    let (d1, _) = get_split_dim a.e_ty in
+    mk_App (MatSplitLeft) [a] (mk_Mat n d1)
+ 
+let mk_MatSplitRight a =
+    ensure_split_compat a.e_ty a "mk_MatSplitLeft";
+    let (n, _) = ensure_mat_ty a.e_ty in
+    let (_, d2) = get_split_dim a.e_ty in
+    mk_App (MatSplitRight) [a] (mk_Mat n d2)
+
 let mk_MatMinus a b =
     let (n,m) = ensure_mat_ty a.e_ty in
     ensure_ty_equal b.e_ty (mk_Mat n m) a None "mk_MatMinus";
     mk_App (MatMinus) [a;b] (mk_Mat n m)
+
+let mk_MatConcat a b =
+    ensure_concat_compat a.e_ty b.e_ty a (Some b) "mk_MatConcat";
+    let (n,m1) = ensure_mat_ty a.e_ty in
+    let (_,m2) = ensure_mat_ty b.e_ty in
+    mk_App (MatConcat) [a;b] (mk_Mat n (MDPlus(m1,m2)))
+
 (* *** Nary mk functions *)
 
 let rec flatten nop es =
