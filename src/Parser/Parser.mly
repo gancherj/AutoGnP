@@ -27,7 +27,8 @@
 (* ** Tokens for types *) */
 
 %token <string> TBS
-%token <string * string> TMAT
+%token TMAT
+%token ONE
 %token TBOOL TFQ 
 %token <string> TG
 
@@ -66,7 +67,7 @@
 %token <string> MGET_ID
 %token <string> MVAR_ID
 
-%token <string * string> MATZERO
+%token MATZERO
 %token <string> GEN
 %token <string> ZBS
 
@@ -179,12 +180,17 @@
 /*======================================================================
 (* * Types *) */
 
+dimexp :
+| b=ID                           {PDBase(b)}
+| ONE                            {PDBase("1")}
+| d1=dimexp PLUS d2=dimexp       {PDPlus(d1,d2)}
+
 typ :
 | i=TBS                          { BS(i) }
 | TBOOL                          { Bool }
 | i=TG                           { G(i) }
 | TFQ                            { Fq }
-| i=TMAT                         { let (n,m)=i in Mat(n,m)}
+| TMAT LCBRACE d1=dimexp COMMA d2=dimexp RCBRACE { Mat(d1,d2)}
 | LPAR l=seplist0(STAR,typ) RPAR { mk_Prod l }
 | i=ID                           { TySym(i) }
 | t=typ CARET n=NAT              { Prod(Util.replicate n t) }
@@ -237,7 +243,7 @@ expr8 :
 | s1=ID BACKTICK s2=ID                    { V(Qual s1, s2) }
 | i=NAT                                   { CFNat(i) }
 | i=GEN                                   { CGen(i) }
-| i=MATZERO                               { let (a,b) = i in MatZ(a,b) }
+| MATZERO LCBRACE d1=dimexp COMMA d2=dimexp RCBRACE { MatZ(d1,d2)}                        
 | i=ZBS                                   { CZ(i) }
 | TRUE                                    { CB(true) }
 | FALSE                                   { CB(false) }

@@ -196,17 +196,18 @@ rule lex = parse
   (* Indexed types *)
   | "BS_"(simple_id as s)       { TBS(s) }                    (* kw: type   *)
   | "G"                         { TG("") }                    (* kw: type   *)
-  | "Matrix_{"(mat_dim as s1)","(mat_dim as s2)"}" {TMAT((s1,s2))}
+  | "Matrix_"                   {TMAT}
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
 
   (* Indexed constants *)
   | "L_"(ident as s)            { LIST(s) }                   (* kw: op     *)
   | "0_"(number_id as s)        { ZBS(s) }                    (* kw: op     *)
-  | "0_{"(mat_dim as s1)","(mat_dim as s2)"}" {MATZERO((s1,s2))}
+  | "0_"                        { MATZERO }
   | "g"                         { GEN("") }                   (* kw: op     *)
   | "g_"(number_id as s)        { GEN(s) }                    (* kw: op     *)
 
   (* Nats and identifiers/keywords *)
+  | '1'                         { ONE }
   | ['0'-'9']['0'-'9']* as s    { NAT(int_of_string(s)) }
   | (ident as s)"["             { MGET_ID(s) } (* FIXME: hack *)
   | (ident as s)"[]"            { MVAR_ID(s) } (* FIXME: hack *)

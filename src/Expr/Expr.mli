@@ -139,6 +139,7 @@ val mk_FOne        : expr
 val mk_FZ          : expr
 val mk_Z           : Lenvar.id -> expr
 val mk_MatZero     : Lenvar.id -> Lenvar.id -> expr
+val mk_MatZero_new     : mdim -> mdim -> expr
 val mk_B           : bool -> expr
 val mk_True        : expr
 val mk_False       : expr

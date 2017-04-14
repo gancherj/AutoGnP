@@ -245,7 +245,12 @@ let mk_True = mk_B true
 
 let mk_False = mk_B false
 
+let rec ex_fst d = match d with
+| MDBase n -> n
+| MDPlus (a,b) -> ex_fst a
+
 let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
+let mk_MatZero_new d1 d2 = mk_MatZero (ex_fst d1) (ex_fst d2)
 
 (* *** Fixed arity mk functions *)
 

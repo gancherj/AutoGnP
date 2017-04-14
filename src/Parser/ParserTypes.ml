@@ -8,12 +8,15 @@ open Util
 
 (* ** Types for parsed types, expressions, and games
  * ----------------------------------------------------------------------- *)
+type parsedim =
+  | PDBase of string
+  | PDPlus of parsedim * parsedim
 
 type parse_ty =
   | Bool
   | Fq
   | BS      of string
-  | Mat     of string * string
+  | Mat     of parsedim * parsedim
   | G       of string
   | TySym   of string
   | Prod    of parse_ty list
@@ -30,7 +33,7 @@ type parse_expr =
   | CB          of bool
   | CZ          of string
   | CGen        of string
-  | MatZ        of string * string
+  | MatZ        of parsedim * parsedim
   | CFNat       of int
   | Mult        of parse_expr * parse_expr
   | Plus        of parse_expr * parse_expr
@@ -74,6 +77,7 @@ type gcmd =
   | GCall   of string list * string * parse_expr * odef list
 
 type gdef = CmdList of gcmd list | Gname of string
+
 
 (* ** Types for parsed proof scripts and tactics
  * ----------------------------------------------------------------------- *)

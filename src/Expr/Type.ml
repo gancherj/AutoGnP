@@ -17,6 +17,10 @@ module Permvar : (module type of Id) = Id
 
 (* ** Types and type nodes *)
 
+type mdim =
+  | MDBase of Lenvar.id
+  | MDPlus of mdim * mdim
+
 type ty = {
   ty_node : ty_node;
   ty_tag : int
@@ -100,7 +104,13 @@ let mk_BS lv = mk_ty (BS lv)
 
 let mk_G gv = mk_ty (G gv)
 
-let mk_Mat n m = mk_ty (Mat (n,m))
+let rec ex_fst d = match d with
+| MDBase n -> n
+| MDPlus (a,b) -> ex_fst a
+
+let mk_Mat n m = mk_ty (Mat (n,m)) 
+let mk_Mat_new d1 d2 = mk_Mat (ex_fst d1) (ex_fst d2)
+
 
 let mk_TySym ts = mk_ty (TySym ts)
 

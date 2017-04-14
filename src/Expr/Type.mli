@@ -19,6 +19,11 @@ module Groupvar : (module type of Id)
 
 (* ** Types and type nodes *)
 
+
+type mdim =
+  | MDBase of Lenvar.id
+  | MDPlus of mdim * mdim
+
 type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
   | BS of Lenvar.id
@@ -57,8 +62,10 @@ val mk_Bool    : ty
 val mk_Prod    : ty list -> ty
 val mk_Int     : ty
 val mk_Mat     : Lenvar.id -> Lenvar.id -> ty 
+val mk_Mat_new     : mdim -> mdim -> ty 
 
 (* ** Indicator and destructor functions *)
+
 
 val is_G	      : ty -> bool
 val is_Fq	      : ty -> bool
