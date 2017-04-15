@@ -211,13 +211,12 @@ and norm_minus ~strong e1 e2 =
     let e2 = norm_mat_expr ~strong e2 in
     norm_mat_expr ~strong (mk_MatPlus [e1; mk_MatOpp e2])
 
-(* TODO *)
 
 
 and norm_concat ~strong e1 e2 = 
     let e1 = norm_mat_expr ~strong e1 in
     let e2 = norm_mat_expr ~strong e2 in
-    if is_plus e1 && is_plus e2 then 
+    if is_plus e1 && is_plus e2 then  (* plus *)
         (* find all splitpairs between e1 and e2,
         extract them *)
         let t1 = (List.hd (extract_plus e1)).e_ty in
@@ -230,27 +229,27 @@ and norm_concat ~strong e1 e2 =
     else if is_splitleft e1 && is_splitright e2 then (* sl x || sr x = x *)
         if is_splitpair e1 e2 then norm_mat_expr ~strong (extract_splitleft e1)
         else mk_MatConcat e1 e2
-    else if is_zero e1 && is_zero e2 then
+    else if is_zero e1 && is_zero e2 then (* 0 || 0 = 0, of correct dim *)
         let (n,m) = ensure_mat_ty e1.e_ty in
         let (_,m')= ensure_mat_ty e2.e_ty in
         mk_MatZero n (MDPlus(m,m'))
-    else if is_opp e1 && is_opp e2 then
+    else if is_opp e1 && is_opp e2 then (* -a || -b = - (a || b) *)
         norm_mat_expr ~strong (mk_MatOpp (mk_MatConcat (extract_opp e1)
         (extract_opp e2)))
     else
         mk_MatConcat e1 e2
 
-and norm_splitleft ~strong e = 
+and norm_split ~strong sp_f e =
     let e = norm_mat_expr ~strong e in
     if is_opp e then
-        mk_MatOpp (mk_MatSplitLeft (extract_opp e))
+        mk_MatOpp (sp_f (extract_opp e))
+    else if is_plus e then (* sl (a + b) -> sl a + sl b *)
+        let es = List.map (norm_mat_expr ~strong) (extract_plus e) in
+        let es = List.map (sp_f) es in
+        norm_mat_expr ~strong (mk_MatPlus es)
     else
-        mk_MatSplitLeft e (* TODO: split over sum, etc *)
+        sp_f e (* TODO: split over sum, etc *)
 
-and norm_splitright ~strong e = 
-    let e = norm_mat_expr ~strong e in
-    if is_opp e then
-        mk_MatOpp (mk_MatSplitRight (extract_opp e))
-    else
-        mk_MatSplitRight e (* TODO: split over sum, etc *)
+and norm_splitleft ~strong e = norm_split ~strong mk_MatSplitLeft e
 
+and norm_splitright ~strong e = norm_split ~strong mk_MatSplitRight e
