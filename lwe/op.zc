@@ -1,8 +1,10 @@
 bound_succ
 [
-  x <-$ Matrix_{n,m};
-  let z = x + 0_{n,m};
+  x <-$ Matrix_{1,1};
+  y <-$ Matrix_{1,1};
+  let a = x + y + (-x);
 ] : false.
+enable_debug.
     norm_nounfold.
 norm_nounfold.
 norm.

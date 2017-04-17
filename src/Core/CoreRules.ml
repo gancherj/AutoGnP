@@ -285,10 +285,12 @@ let ensure_bijection ?partial:(partial=false) se c1 c2 rs = (* c1 = inverse, c2 
 
   let v  = mk_V rs in
   let v' = mk_V (VarSym.mk (mk_name ~name:"v__" se) t') in
+  let f1 = (inst_ctxt c2 (inst_ctxt c1 v')) in
+  let f2 = (inst_ctxt c1 (inst_ctxt c2 v)) in
   if not (Norm.equalmod_expr (inst_ctxt c2 (inst_ctxt c1 v')) v' &&
             (partial || Norm.equalmod_expr (inst_ctxt c1 (inst_ctxt c2 v)) v)) then
-    tacerror "contexts %a and %a are not bijective"
-      pp_ctxt c1 pp_ctxt c2
+    tacerror "contexts %a and %a are not bijective: w/ %a, %a, %a, %a"
+      pp_ctxt c1 pp_ctxt c2 pp_expr f1 pp_expr v' pp_expr f2 pp_expr v
 
 
 let r_rnd p c1 c2 ju =

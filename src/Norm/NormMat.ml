@@ -1,4 +1,9 @@
 open Expr
+open ExprUtils
+open Util
+
+let mk_log level = mk_logger "Deduce.Deduc" level "Deduc.ml"
+let log_i = mk_log Bolt.Level.INFO
 
 let rec rem_first_occ f xs = match xs with
 | [] -> []
@@ -14,7 +19,7 @@ let contains_op e es = List.exists (fun x -> is_opp_sym e x) es
 
 let rec rem_first_op x es = match es with
     | [] -> []
-    | e :: es' -> if is_opp_sym x e then es' else rem_first_op x es'
+    | e :: es' -> if is_opp_sym x e then es' else e :: (rem_first_op x es')
 
 let rem_opps_step so_far e = 
     if contains_op e so_far then 
@@ -99,10 +104,13 @@ let extract_tr e = match e.e_node with
 
 
 let rec norm_mat_expr ~strong e = 
-    match e.e_node with
+    log_i (lazy (fsprintf "mat normalizing %a" pp_expr e));
+    let ans = (match e.e_node with
     | App(op,es) -> norm_mat_op ~strong e op es
     | Nary(nop, es) -> norm_mat_nop ~strong nop es
-    | _ -> e
+    | _ -> e) in
+    log_i (lazy (fsprintf "mat: got %a" pp_expr ans));
+    ans
 
 and norm_mat_op ~strong e op es =
     match op, es with
@@ -203,9 +211,10 @@ and norm_plus ~strong es =
     let es = subs @ others in 
     let es = List.filter (fun x -> not (is_zero x)) es in (* remove zeroes *)
     let es' = remove_opps es in (* look for ops that cancel *)
-    match (List.length es') with
+    let ans = (match (List.length es') with
     | 0 -> let (n,m) = ensure_mat_ty (List.hd es).e_ty in mk_MatZero n m
-    | _ -> mk_MatPlus es'
+    | _ -> mk_MatPlus es') in
+    ans
 
 and norm_minus ~strong e1 e2 =
     let e1 = norm_mat_expr ~strong e1 in
@@ -249,7 +258,7 @@ and norm_split ~strong sp_f e =
         let es = List.map (sp_f) es in
         norm_mat_expr ~strong (mk_MatPlus es)
     else
-        sp_f e (* TODO: split over sum, etc *)
+        sp_f e 
 
 and norm_splitleft ~strong e = norm_split ~strong mk_MatSplitLeft e
 

@@ -26,8 +26,6 @@ bound_adv [
   let xx = ((b?Mu(()):0_{1,1})+r) - (b?Mu(()):0_{1,1});
 ] : b = b'.
 enable_debug.
-norm_nounfold.
-norm.
 
 rnd! r (x -> x - (b?Mu(()):0_{1,1})) (x -> x + (b?Mu(()):0_{1,1})).
 
