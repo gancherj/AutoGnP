@@ -1,9 +1,9 @@
 bound_succ
 [
-  x <-$ Matrix_{n,n};
-  let zz = 0_{n,n};
-  let z = x - x + x + (-x);
-  let y = x * z;
-] : not (z = zz).
-    norm.
+  x <-$ Matrix_{n,m};
+  let z = x + 0_{n,m};
+] : false.
+    norm_nounfold.
+norm_nounfold.
+norm.
     bycrush.

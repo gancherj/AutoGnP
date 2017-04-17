@@ -34,5 +34,7 @@ bound_adv [
    let c2 = (tr u) * s + x + m;
    b' <- A_pke (A,c1,u,c2);
  ] : b=b'.
- norm.
+move A 1.
+
+norm.
 assumption_decisional! LHL -> t.

@@ -28,7 +28,6 @@
 
 %token <string> TBS
 %token TMAT
-%token ONE
 %token TBOOL TFQ 
 %token <string> TG
 
@@ -181,7 +180,7 @@
 
 dimexp :
 | b=ID                           {PDBase(b)}
-| ONE                            {PDBase("1")}
+| i=NAT                            {PDBase("1")}
 | d1=dimexp PLUS d2=dimexp       {PDPlus(d1,d2)}
 
 typ :

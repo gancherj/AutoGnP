@@ -210,7 +210,6 @@ rule lex = parse
   | "g_"(number_id as s)        { GEN(s) }                    (* kw: op     *)
 
   (* Nats and identifiers/keywords *)
-  | '1'                         { ONE }
   | ['0'-'9']['0'-'9']* as s    { NAT(int_of_string(s)) }
   | (ident as s)"["             { MGET_ID(s) } (* FIXME: hack *)
   | (ident as s)"[]"            { MVAR_ID(s) } (* FIXME: hack *)

@@ -100,11 +100,11 @@ let extract_tr e = match e.e_node with
 
 let rec norm_mat_expr ~strong e = 
     match e.e_node with
-    | App(op,es) -> norm_mat_op ~strong op es
+    | App(op,es) -> norm_mat_op ~strong e op es
     | Nary(nop, es) -> norm_mat_nop ~strong nop es
     | _ -> e
 
-and norm_mat_op ~strong op es =
+and norm_mat_op ~strong e op es =
     match op, es with
     | MatMult, [e1;e2] -> norm_mult ~strong e1 e2
     | MatOpp, [e1] -> norm_opp ~strong e1
@@ -113,7 +113,8 @@ and norm_mat_op ~strong op es =
     | MatConcat, [e1;e2] -> norm_concat ~strong e1 e2
     | MatSplitLeft, [e1] -> norm_splitleft ~strong e1
     | MatSplitRight, [e1] -> norm_splitright ~strong e1
-    | _, _ -> assert false
+    | FunCall(f), _ -> e
+    | _, _ -> e
 
 and norm_mat_nop ~strong nop es =
     match nop with

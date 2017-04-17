@@ -55,7 +55,7 @@ and ty_node =
 let equal_mat_ty t1 t2 =
     match t1.ty_node, t2.ty_node with
     | Mat (a,b), Mat(c,d) -> mdim_equal a c && mdim_equal b d
-    | _ -> assert false
+    | _ -> false
 
 let equal_ty t1 t2 =
     match t1.ty_node with
