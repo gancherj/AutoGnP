@@ -111,7 +111,7 @@ let rec norm_mat_expr nf e =
     let ans = (match e.e_node with
     | App(op,es) -> norm_mat_op nf e op es
     | Nary(nop, es) -> norm_mat_nop nf e nop es
-    | _ -> nf e) in
+    | _ -> log_i (lazy (fsprintf "got here with %a" pp_expr e)); nf e) in
     ans
 
 and norm_mat_op nf e op es =
@@ -185,6 +185,7 @@ and norm_opp nfo e =
 
 and norm_trans nfo e =
     let nf = norm_mat_expr nfo in
+    let e = nf e in
     if is_mult e then
         let (a,b) = extract_mult e in
         let a = nf a in

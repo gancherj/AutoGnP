@@ -133,7 +133,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
       | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
-              add_sub_solver e; List.iter (register_subexprs true) es (* TODO fix
+              add_sub e; List.iter (register_subexprs true) es (* TODO fix
       *)
       (*
       | FDiv ->
@@ -143,7 +143,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | Nary(op,es) ->
       begin match op with
       | Lor | Land | GMult -> add_sub e; List.iter (register_subexprs
-      false) es (*TODO move matplus elsewhere? *)
+      false) es 
       | FPlus | FMult ->
         if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | Xor ->
@@ -228,7 +228,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Lor   -> constructn e es mk_Lor
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
-      | MatPlus -> constructn e es mk_MatPlus
+      | MatPlus -> constructn e es mk_MatPlus (* () *)
       end
     | V _
     | Cnst _ -> reg_constr e e

@@ -583,6 +583,7 @@ let rec is_Zero e =
   | Cnst Z               -> true
   | Tuple es             -> L.for_all is_Zero es
   | App(GExp _, [e1;e2]) -> is_Zero e2 || is_Zero e1
+  | Cnst (MatZero)       -> true
   | _                    -> false
 
 type inverter = I of expr
