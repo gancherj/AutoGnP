@@ -178,6 +178,10 @@ let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
   | _      -> false
 
+let is_Mat ty = match ty.ty_node with
+  | Mat _ -> true
+  | _ -> false
+
 let destr_G_exn ty =
   match ty.ty_node with
   | G gv -> gv

@@ -15,30 +15,6 @@ adversary A_pke : (Matrix_{n,m} * Matrix_{m,1} * Matrix_{n,1} * Matrix_{1,1}) ->
 
 operator Mu : () -> Matrix_{1,1}.
 
-adversary Aa : (Matrix_{n,m} * Matrix_{n,1} * Matrix_{n,m}) -> Bool.
-bound_adv [
-  b <-$ Bool;
-  A <-$ Matrix_{n,m};
-  B <-$ Matrix_{n,m};
-  re <-$ BS_m;
-  let e = bit_inj(re);
-    u <-$ Matrix_{n,1};
-  b' <- Aa(A, (b?u:A * e), B + A);
-  ] : b = b'.
-norm.
-move A 1.
-
-assumption_decisional! LHL -> t.
-norm.
-rnd! u (x -> x + t) (x -> x - t).
-norm.
-rnd! t (x -> x - (b?u:0_{n,1})) (x -> x + (b?u:0_{n,1})).
-norm.
-
-
-  bycrush.
-qed.
-
 bound_adv [
   let mu = Mu(());
     b <-$ Bool; let m = 0_{1,1};
@@ -60,6 +36,5 @@ bound_adv [
  ] : b=b'.
 norm.
 move A 1.
-move 5 1.
-move 5 1.
+move 3 2.
 assumption_decisional! LHL -> t.

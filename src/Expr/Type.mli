@@ -73,6 +73,7 @@ val mk_Mat     : mdim -> mdim -> ty
 val is_G	      : ty -> bool
 val is_Fq	      : ty -> bool
 val is_Prod	      : ty -> bool
+val is_Mat        : ty -> bool
 val destr_G_exn	      : ty -> Groupvar.id
 val destr_BS_exn      : ty -> Lenvar.id
 val destr_Prod_exn    : ty -> ty list
