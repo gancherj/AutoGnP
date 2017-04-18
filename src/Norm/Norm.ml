@@ -73,9 +73,9 @@ let rec norm_expr ~strong e =
 
   | App(op, _)   when is_field_op op   -> mk_simpl_field_expr ~strong e
 
-  | Nary(nop, _) when is_mat_nop nop -> norm_mat_expr ~strong e
+  | Nary(nop, _) when is_mat_nop nop -> mk_simpl_mat_expr ~strong e
 
-  | App(op, _)   when is_mat_op op -> norm_mat_expr ~strong e
+  | App(op, _)   when is_mat_op op -> mk_simpl_mat_expr ~strong e
 
   | Nary(nop, l) -> mk_simpl_nop ~strong nop (List.map (norm_expr ~strong) l)
 
@@ -161,7 +161,10 @@ and mk_simpl_op ~strong op l =
       then mk_GExp e2_1 (mk_Ifte_simp e1 e2_2 e3_2)
       else norm_type (mk_Ifte e1 e2 e3)
     ) else if is_matplus e2 || is_matplus e1 then (
-      NormMat.norm_ifte e1 e2 e3
+        let norm_subexpr e =
+            if is_mat_exp e then e else norm_expr ~strong e
+        in
+          NormMat.norm_ifte norm_subexpr e1 e2 e3
     ) else norm_type (mk_Ifte e1 e2 e3)
 
   | ( GExp _ | GLog _ | EMap _ | GInv
@@ -262,6 +265,11 @@ and mk_simpl_field_expr ~strong e =
   in
   CAS.norm norm_subexpr e
 
+and mk_simpl_mat_expr ~strong e =
+    let norm_subexpr e =
+        if is_mat_exp e then e else norm_expr ~strong e
+    in
+    norm_mat_expr norm_subexpr e
 
 let norm_expr_weak = norm_expr ~strong:false
 
