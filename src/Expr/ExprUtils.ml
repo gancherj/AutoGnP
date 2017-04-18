@@ -135,7 +135,11 @@ let is_mat_op = function
   | MatMult | MatOpp | MatTrans | MatMinus | MatConcat | MatSplitLeft |
   MatSplitRight -> true
   | _ -> false
- 
+
+let is_matplus e = match e.e_node with
+  | Nary(MatPlus, _) -> true
+  | _ -> false
+
 let is_mat_nop = fun x -> x = MatPlus
 
 let is_mat_exp e = match e.e_node with

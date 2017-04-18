@@ -1,11 +1,22 @@
-bound_succ
-[
-  x <-$ Matrix_{1,1};
-  y <-$ Matrix_{1,1};
-  let a = x + y + (-x);
+adversary Aa : (Matrix_{n,1}) -> Bool.
+bound_adv [
+  b <-$ Bool;
+  x <-$ Matrix_{n,1};
+  y <-$ Matrix_{n,1};
+  let m = (b ? x: y);
+  b' <- Aa(m);
 ] : false.
-enable_debug.
-    norm_nounfold.
-norm_nounfold.
+  rnd! x (t -> t + y) (t -> t - y).
+norm.  
+  norm_nounfold.
+  norm.
+move A 1.
+assumption_decisional! LHL -> t.
 norm.
-    bycrush.
+rnd! t (x -> x + u) (x -> x - u).
+norm.
+norm.
+rnd! u (x -> x - t) (x -> x + t).
+norm.
+
+norm.

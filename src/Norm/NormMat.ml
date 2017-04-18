@@ -9,6 +9,10 @@ let rec rem_first_occ f xs = match xs with
 | [] -> []
 | x :: xs -> if (f x) then xs else x :: (rem_first_occ f xs)
 
+let rec rem_first_eq e xs = match xs with
+| [] -> []
+| x :: xs -> if (x = e) then xs else x :: (rem_first_eq e xs)
+
 (* find instances of e and -e in es, and remove the pair if found *)
 
 let is_zero e = match e.e_node with Cnst(MatZero) -> true | _ -> false
@@ -104,12 +108,10 @@ let extract_tr e = match e.e_node with
 
 
 let rec norm_mat_expr ~strong e = 
-    log_i (lazy (fsprintf "mat normalizing %a" pp_expr e));
     let ans = (match e.e_node with
     | App(op,es) -> norm_mat_op ~strong e op es
     | Nary(nop, es) -> norm_mat_nop ~strong nop es
     | _ -> e) in
-    log_i (lazy (fsprintf "mat: got %a" pp_expr ans));
     ans
 
 and norm_mat_op ~strong e op es =
@@ -122,6 +124,8 @@ and norm_mat_op ~strong e op es =
     | MatSplitLeft, [e1] -> norm_splitleft ~strong e1
     | MatSplitRight, [e1] -> norm_splitright ~strong e1
     | FunCall(f), _ -> e
+    | Ifte, [e1; e2; e3] -> mk_Ifte e1 (norm_mat_expr ~strong e2) (norm_mat_expr
+    ~strong e3)
     | _, _ -> e
 
 and norm_mat_nop ~strong nop es =
@@ -167,8 +171,10 @@ and norm_opp ~strong e =
         end
         else e 
     in
-
-    mk_MatOpp e
+    if is_plus e then let es = extract_plus e in
+        mk_MatPlus (List.map mk_MatOpp es)
+    else
+        mk_MatOpp e
 
     (* tr (a * b) -> (tr b) * (tr a) 
      * tr (a + b) -> tr a + tr b
@@ -242,7 +248,7 @@ and norm_concat ~strong e1 e2 =
     else if is_zero e1 && is_zero e2 then (* 0 || 0 = 0, of correct dim *)
         let (n,m) = ensure_mat_ty e1.e_ty in
         let (_,m')= ensure_mat_ty e2.e_ty in
-        mk_MatZero n (MDPlus(m,m'))
+        mk_MatZero n (Type.MDPlus(m,m'))
     else if is_opp e1 && is_opp e2 then (* -a || -b = - (a || b) *)
         norm_mat_expr ~strong (mk_MatOpp (mk_MatConcat (extract_opp e1)
         (extract_opp e2)))
@@ -263,3 +269,30 @@ and norm_split ~strong sp_f e =
 and norm_splitleft ~strong e = norm_split ~strong mk_MatSplitLeft e
 
 and norm_splitright ~strong e = norm_split ~strong mk_MatSplitRight e
+
+let rec intersect_plus acc es1 es2 = match es1 with
+    | [] -> (acc, [], es2)
+    | e1 :: es1 -> if List.mem e1 es2 then 
+        intersect_plus (e1::acc) es1 (rem_first_eq e1 es2)
+    else let (acc', es1', es2') = intersect_plus acc es1 es2 in
+    (acc', e1 :: es1', es2')
+
+let mk_pl_safe es ty = match es with
+| [] -> let (n,m) = ensure_mat_ty ty in mk_MatZero n m
+| [e] -> e
+| es -> mk_MatPlus es
+
+let norm_ifte b e1 e2 = (* turn b?e1:e2 into es + b?e1':e2', if e2 and e2 are
+plusses and share things with es *)
+    print_string "hi";
+    let ty = e1.e_ty in
+    let es1 = if is_plus e1 then extract_plus e1 else [e1] in
+    let es2 = if is_plus e2 then extract_plus e2 else [e2] in
+    let (intersect, es1', es2') = intersect_plus [] es1 es2 in
+    let e1' = mk_pl_safe es1' ty in
+    let e2' = mk_pl_safe es2' ty in
+    if (List.length intersect = 0) then 
+        mk_Ifte b e1 e2
+    else
+        norm_mat_expr ~strong:true (mk_MatPlus (intersect @ [mk_Ifte b e1'
+        e2']))

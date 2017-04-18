@@ -7,7 +7,7 @@ assumption LWE
 
  operator bit_inj : BS_m -> Matrix_{m,1}.
  adversary A_lhl : (Matrix_{n,m} * Matrix_{n,1}) -> Bool.
- assumption LHL
+ assumption LHL ([A])
  [ A <-$ Matrix_{n,m}; e <-$ BS_m; b <- A_lhl(A, A * bit_inj(e));]
  [ A <-$ Matrix_{n,m}; u <-$ Matrix_{n,1}; b <- A_lhl(A, u);].
 
@@ -22,24 +22,36 @@ bound_adv [
   let m = b?Mu(()):0_{1,1};
     r <-$ Matrix_{1,1};
     b' <- A_(r + m);
-  v__ <-$ Matrix_{1,1};
-  let xx = ((b?Mu(()):0_{1,1})+r) - (b?Mu(()):0_{1,1});
 ] : b = b'.
-enable_debug.
 
 rnd! r (x -> x - (b?Mu(()):0_{1,1})) (x -> x + (b?Mu(()):0_{1,1})).
 
 norm.
 move 1 3.
 indep!.
-rnd! r (x -> x - (b?Mu(()):0)) (x -> x + (b?Mu(()):0)).
+qed.
 
+adversary Aa : (Matrix_{n,m} * Matrix_{n,1}) -> Bool.
+bound_adv [
+  b <-$ Bool;
+  A <-$ Matrix_{n,m};
+  re <-$ BS_m;
+  let e = bit_inj(re);
+    u <-$ Matrix_{n,1};
+  
+  b' <- Aa(A, (b?u:A * e));
+  ] : b = b'.
 norm.
-move 1 3.
-indep!.    
-
-
-
+move A 1.
+assumption_decisional! LHL -> t.
+norm.
+rnd! u (x -> x + t) (x -> x - t).
+norm.
+rnd! t (x -> x - (b?u:0_{n,1})) (x -> x + (b?u:0_{n,1})).
+norm.
+move 2 5.
+indep!.
+Q
 bound_adv [
   let mu = Mu(());
     b <-$ Bool; let m = 0_{1,1};
@@ -59,7 +71,8 @@ bound_adv [
    let c2 = (tr u) * s + x + m;
    b' <- A_pke (A,c1,u,c2);
  ] : b=b'.
-move A 1.
-
 norm.
+move 3 1.
+move 3 2.
+enable_debug.
 assumption_decisional! LHL -> t.

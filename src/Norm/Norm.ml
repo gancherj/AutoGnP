@@ -160,6 +160,8 @@ and mk_simpl_op ~strong op l =
       if equal_expr e2_1 e3_1 && not (is_GLog e2_2 || is_GLog e3_2)
       then mk_GExp e2_1 (mk_Ifte_simp e1 e2_2 e3_2)
       else norm_type (mk_Ifte e1 e2 e3)
+    ) else if is_matplus e2 || is_matplus e1 then (
+      NormMat.norm_ifte e1 e2 e3
     ) else norm_type (mk_Ifte e1 e2 e3)
 
   | ( GExp _ | GLog _ | EMap _ | GInv
