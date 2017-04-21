@@ -170,6 +170,9 @@ let is_G ty = match ty.ty_node with
   | G _ -> true
   | _   -> false
 
+let is_BS ty = match ty.ty_node with
+  | BS _ -> true
+  | _   -> false
 let is_Fq ty = match ty.ty_node with
   | Fq -> true
   | _  -> false
@@ -180,6 +183,10 @@ let is_Prod ty = match ty.ty_node with
 
 let is_Mat ty = match ty.ty_node with
   | Mat _ -> true
+  | _ -> false
+
+let is_Mat_splittable ty = match ty.ty_node with
+  | Mat (_, MDPlus(_)) -> true
   | _ -> false
 
 let destr_G_exn ty =

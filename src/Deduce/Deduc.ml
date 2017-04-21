@@ -1,3 +1,4 @@
+
 (* * Deducibility of expressions. *)
 
 (* ** Imports and abbreviations *)
@@ -46,7 +47,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
-      | MatOpp, [e]         -> add_known e (mk_MatOpp inv)
+      | MatOpp, _           -> add_known e (mk_MatOpp inv)
+      | MatConcat, [e1; e2] -> add_known e (mk_MatSplitLeft e1); add_known e
+      (mk_MatSplitRight e2)
       | (FMinus | FDiv), _  -> ()
       | (Eq| Not | Ifte), _ -> ()
       | EMap _, _           -> ()
@@ -243,7 +246,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
-      | Mat _        -> DeducMat.solve_mat, fun t -> is_Mat t  
+      | Mat _        -> DeducMat.solve_mat, fun t -> is_Mat t 
       | TySym _ | Prod _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in
