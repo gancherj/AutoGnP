@@ -248,6 +248,10 @@ let pp_rule ?hide_admit:(hide_admit=false) fmt ru =
   match ru with
   | Rconv ->
     F.fprintf fmt "rconv"
+  | Rmatfold (wh,i,j) ->
+    F.fprintf fmt "mat_fold %i %i" i j
+  | Rmatunfold (wh,i) ->
+    F.fprintf fmt "mat_unfold %i" i
   | Rsep_dom(_,_) ->
     F.fprintf fmt "rsep_dom"
   | Rassert(p,e) ->

@@ -1,4 +1,4 @@
-(* TODO: refactor; this is close to working; whiteboard *)
+(* TODO: refactor; this is very ugly *)
 open Expr
 open ExprUtils
 open Util
@@ -205,4 +205,3 @@ let solve_mat ecs e =
     | Some ans -> ans
     | None ->
     log_i (lazy (fsprintf "SOLVE MAT: couldn't find %a" pp_expr e)); raise Not_found
-    (* TODO the rest *)

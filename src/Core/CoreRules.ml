@@ -198,6 +198,30 @@ let r_conv do_norm_terms new_se0 ju =
 
 let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
 
+let ensure_ty_unfold wh ty = if wh then
+    match ty.ty_node with
+    | Mat (MDPlus(a,b),c) -> ((a,b), c)
+    | _ -> tacerror "bad mat"
+else
+    match ty.ty_node with
+    | Mat (a, MDPlus(b,c)) -> ((b,c), a)
+    | _ -> tacerror "bad mat"
+
+let r_matfold wh i j = tacerror "unimplemented"
+
+let ct_matfold wh i j = prove_by (r_matfold wh i j)
+
+let r_matunfold wh i ju = 
+    let se = ju.ju_se in
+    match get_se_ctxt se i with
+    | GSamp(ab, (ty, exc)), sec ->
+      if exc <> [] then tacerror "excepted distribution not allowed";
+      let ((a,b),c) = ensure_ty_unfold wh ty in
+      tacerror "unimplemented" 
+      
+
+let ct_matunfold wh i = prove_by (r_matunfold wh i)
+
 (* *** Instruction movement.
  * ----------------------------------------------------------------------- *)
 

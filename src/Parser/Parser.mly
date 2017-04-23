@@ -100,6 +100,8 @@
 /*----------------------------------------------------------------------
 (* ** Tokens for tactics *) */
 
+%token RMATFOLD RMATUNFOLD
+
 %token SLASH2 SLASHEQ SLASH2EQ SLASH3EQ
 %token RNORM RNORM_UNKNOWN RNORM_SOLVE RNORM_NOUNFOLD
 %token RRND RRND_EXP REXC
@@ -505,6 +507,9 @@ tactic :
 | RLET_ABS_DED excl=EXCL? i=assgn_pos
     i1=ID e1=expr mup=maybe_upto?              { Rlet_abs_ded(excl<>None,i,i1,e1,mup) }
 | ASSERT i=assgn_pos e=expr?                   { Rassert(i,e) }
+
+| RMATUNFOLD i=gpos                            { Rmatunfold(None,i) }
+| RMATFOLD i=gpos j=gpos                       { Rmatfold(None,i,j) }
 
 /* moving lines */
 | RMOVE i=move_pos j=assgn_pos                 { Rmove(i,j) }

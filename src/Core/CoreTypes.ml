@@ -69,6 +69,10 @@ type rule_name =
   (* Rename, unfold let, and normalize. *)
   | Rconv
 
+  | Rmatfold of bool * int * int
+
+  | Rmatunfold of bool * int
+
   (* [Rmove(p,i)]: move statement at [p] forward by [i]. *)
   | Rmove of gcmd_pos * int
 

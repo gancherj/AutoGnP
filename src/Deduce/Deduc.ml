@@ -136,8 +136,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
       | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
-              add_sub e; List.iter (register_subexprs true) es (* TODO fix
-      *)
+              add_sub e; List.iter (register_subexprs true) es 
+      
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this
@@ -205,8 +205,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       (* in the PPT case, we always rely on the solver for groups *)
     | GExp _, [e1;e2] when not ppt ->
       construct2 e e1 e2 mk_GExp
-    | MatMinus, [e1;e2]  -> construct2 e e1 e2 mk_MatMinus (* TODO is this what
-    I should be doing? *)
+    | MatMinus, [e1;e2]  -> construct2 e e1 e2 mk_MatMinus 
     | MatMult, [e1;e2]   -> construct2 e e1 e2 mk_MatMult
     | MatConcat, [e1;e2]   -> construct2 e e1 e2 mk_MatConcat
     | MatOpp, [e1] -> construct1 e e1 mk_MatOpp

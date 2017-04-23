@@ -65,6 +65,10 @@
       ; "unfold" ,                  RLET_UNFOLD               (* kw: tactic      *)
       ; "abstract",                 RLET_ABS                  (* kw: tactic      *)
 
+
+      ; "mat_fold",                 RMATFOLD
+      ; "mat_unfold",               RMATUNFOLD
+
       ; "move",                     RMOVE                     (* kw: tactic      *)
       ; "move_main",                RMOVE_MAIN                (* kw: tactic      *)
 

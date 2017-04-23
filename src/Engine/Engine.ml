@@ -333,6 +333,16 @@ let handle_tactic ts tac =
       let ev2 = PU.ev_of_parse_ev vmap_g ts sev in
       T.t_conv true { se_gdef = ju.ju_se.se_gdef; se_ev = ev2 } ju
 
+    | PT.Rmatunfold(Some which, i) ->
+      T.t_matunfold which i ju
+
+    | PT.Rmatunfold(None, i) ->
+      T.t_matunfold true i ju
+
+    | PT.Rmatfold(Some which, i, j) -> T.t_matfold which i j ju
+
+    | PT.Rmatfold(None, i, j) -> T.t_matfold true i j ju
+
     | PT.Rtrans(sgd,sev) ->
       let vmap2 = Hashtbl.create 134 in
       let gd2 = parse_gdef vmap2 ts sgd in

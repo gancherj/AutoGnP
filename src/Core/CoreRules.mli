@@ -47,6 +47,12 @@ val merge_proof_states : proof_state list -> (proof_tree list -> proof_tree) -> 
 
 val ct_conv : bool -> sec_exp -> core_tactic
 
+(* Matrix fold/unfold sampling *)
+
+val ct_matfold : bool -> int -> int -> core_tactic
+
+val ct_matunfold : bool -> int -> core_tactic
+
 (** [rtans new_se] an be used to replace the current security
     experiment [se] with [new_se] after proving that [se] and
     [new_se] are indistinguishable *)

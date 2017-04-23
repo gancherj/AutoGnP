@@ -1,8 +1,11 @@
 operator Chi : BS_r -> Matrix_{m+1,1}.
-adversary A_lwe : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
-assumption LWE
- [ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; r <-$ BS_r; b <- A_lwe(A, (tr A) * s + Chi(r));]
- [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- A_lwe(A, u);].
+adversary A_lwe : (Matrix_{n,m} * Matrix_{n,1} * Matrix_{m,1} * Matrix_{1,1}) -> Bool.
+assumption LWEsp
+[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; r <-$ BS_r;
+  let arg1 = A;
+  let arg2 = (tr A) * s + Chi(r);
+    b <- A_lwe(sl A, sr A, tr sl tr arg2, tr sr tr arg2);]
+ [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- A_lwe(sl A, sr A, tr sl tr u, tr sr tr u);].
 
  operator bit_inj : BS_m -> Matrix_{m,1}.
  adversary A_lhl : (Matrix_{n,m} * Matrix_{n,1}) -> Bool.
@@ -37,8 +40,14 @@ bound_adv [
 
 move A 1.
 move 3 2.
-assumption_decisional! LHL -> t.
-move 5 2.
-move 6 3.
-
-assumption_decisional! LWE -> tt.
+assumption_decisional! LHL -> u.
+trans*
+[
+  insert 1 [Au <-$ Matrix_{n,m+1};],
+  subst 2 (A -> sl Au),
+  subst 2 (u -> sr Au)
+].
+    admit.
+move 7 2.
+move 7 2.
+assumption_decisional! LWEsp -> t1.

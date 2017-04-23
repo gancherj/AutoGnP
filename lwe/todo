@@ -1,0 +1,25 @@
+TODO:
+    be able to move back and forth between uniformly random over sum dimension, and uniformly random over split
+
+    so
+    A <-$ Matrix_{n,m}
+    u <-$ Matrix_{n,1}
+
+    is equiv to
+    Au <-$ Matrix_{n,m+1}
+    let A = sl Au
+    let u = sr Au
+
+(this is needed to apply the lwe assumption)
+
+we also need to go back, after the lwe assumption is made
+
+so if we have 
+    Au <-$ Matrix_{n,m+1}
+    let u = sr Au
+    then we can transform into
+    A <-$ Matrix_{n,m}
+    u <-$ Matrix_{n,1}
+
+
+

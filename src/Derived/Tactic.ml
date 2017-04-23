@@ -157,6 +157,10 @@ let core_tactic ct g =
 
 let t_conv do_norm new_se = core_tactic (ct_conv do_norm new_se)
 
+let t_matfold which ia ib = core_tactic (ct_matfold which ia ib)
+
+let t_matunfold which i = core_tactic (ct_matunfold which i)
+
 let t_assm_comp assm ev_e subst = core_tactic (ct_assm_comp assm ev_e subst)
 
 let t_assm_dec dir ren rngs assm = core_tactic (ct_assm_dec dir ren rngs assm)

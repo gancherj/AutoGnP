@@ -52,6 +52,10 @@ val core_tactic : core_tactic -> tactic
 
 val t_conv : bool -> sec_exp -> tactic
 
+val t_matfold : bool -> int -> int -> tactic
+
+val t_matunfold : bool -> int -> tactic
+
 val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
 
 val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic

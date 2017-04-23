@@ -98,7 +98,8 @@ let solve_fq (ecs : (expr * inverter) list) e =
 
 let solve_mixed_type k s =
   let ty_k, ty_s = k.e_ty, s.VarSym.ty in
-  match ty_k.ty_node, ty_s.ty_node with
+  match ty_k.ty_node, ty_s.ty_node with (* TODO: make Matrix version. should be
+  easy *)
   | Fq, Fq ->
     (s,solve_fq_vars_known k s)
 
