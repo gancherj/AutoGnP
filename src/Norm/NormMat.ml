@@ -1,3 +1,4 @@
+(* todo refactor *)
 open Expr
 open ExprUtils
 open Util
@@ -263,7 +264,8 @@ and norm_concat nfo e1 e2 =
     else
         mk_MatConcat e1 e2
 
-and norm_split nfo sp_f e =
+and norm_split nfo wh e =
+    let sp_f = if wh then mk_MatSplitRight else mk_MatSplitLeft in
     let nf = norm_mat_expr nfo in
     let e = nf e in
     if is_opp e then
@@ -272,12 +274,15 @@ and norm_split nfo sp_f e =
         let es = List.map (nf) (extract_plus e) in
         let es = List.map (sp_f) es in
         nf (mk_MatPlus es)
+    else if is_concat e then
+        let (e1,e2) = extract_concat e in
+        if wh then nf e2 else nf e1
     else
         sp_f e 
 
-and norm_splitleft nf e = norm_split nf mk_MatSplitLeft e
+and norm_splitleft nf e = norm_split nf false e
 
-and norm_splitright nf e = norm_split nf mk_MatSplitRight e
+and norm_splitright nf e = norm_split nf true e
 
 let rec intersect_plus acc es1 es2 = match es1 with
     | [] -> (acc, [], es2)

@@ -200,12 +200,21 @@ let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
 
 let ensure_ty_unfold wh ty = if wh then
     match ty.ty_node with
-    | Mat (MDPlus(a,b),c) -> ((a,b), c)
-    | _ -> tacerror "bad mat"
+    | Mat (a, MDPlus(b,c)) -> ((b,c), a)
+    | _ -> tacerror "bad mat: got %a" pp_ty ty
 else
     match ty.ty_node with
-    | Mat (a, MDPlus(b,c)) -> ((b,c), a)
-    | _ -> tacerror "bad mat"
+    | Mat (MDPlus(a,b),c) -> ((a,b), c)
+    | _ -> tacerror "bad mat: got %a" pp_ty ty
+
+let split_ty_unfold wh ty = if wh then
+    match ty.ty_node with
+    | Mat (a, MDPlus(b,c)) -> (mk_Mat a b, mk_Mat a c)
+    | _ -> assert false
+else
+    match ty.ty_node with
+    | Mat (MDPlus(a,b),c) -> (mk_Mat a c, mk_Mat b c)
+    | _ -> assert false
 
 let r_matfold wh i j = tacerror "unimplemented"
 
@@ -216,8 +225,20 @@ let r_matunfold wh i ju =
     match get_se_ctxt se i with
     | GSamp(ab, (ty, exc)), sec ->
       if exc <> [] then tacerror "excepted distribution not allowed";
-      let ((a,b),c) = ensure_ty_unfold wh ty in
-      tacerror "unimplemented" 
+      let ((x,y),z) = ensure_ty_unfold wh ty in (*if wh then ab is
+      Matrix_{z,x+y}; if not wh then ab is Matrix_{x+y,z} *)
+      let (a_ty, b_ty) = split_ty_unfold wh ty in
+      let sa = VarSym.mk (mk_name ~name:"A" se) a_ty in
+      let sb = VarSym.mk (mk_name ~name:"B" se) b_ty in
+      let a = mk_V sa in
+      let b = mk_V sb in
+      let subst = if wh then fun e -> e_replace (mk_V ab) (mk_MatConcat a b) e
+                  else fun e -> e_replace (mk_V ab) (mk_MatTrans (mk_MatConcat
+                  (mk_MatTrans a) (mk_MatTrans b))) e in
+      let se = set_se_ctxt [ GSamp(sa, (a.e_ty, [])); GSamp(sb, (b.e_ty, [])) ] sec in
+      let se = map_se_exp subst se in
+      Rmatunfold(wh,i), [ {ju with ju_se = se } ] 
+      
       
 
 let ct_matunfold wh i = prove_by (r_matunfold wh i)
