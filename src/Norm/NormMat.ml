@@ -277,6 +277,9 @@ and norm_split nfo wh e =
     else if is_concat e then
         let (e1,e2) = extract_concat e in
         if wh then nf e2 else nf e1
+    else if is_mult e then
+        let (e1,e2) = extract_mult e in
+        nf (mk_MatMult e1 (sp_f e2))
     else
         sp_f e 
 

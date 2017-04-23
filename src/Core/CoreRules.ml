@@ -216,7 +216,52 @@ else
     | Mat (MDPlus(a,b),c) -> (mk_Mat a c, mk_Mat b c)
     | _ -> assert false
 
-let r_matfold wh i j = tacerror "unimplemented"
+let ensure_ty_fold wh ty1 ty2 = if wh then
+    match ty1.ty_node, ty2.ty_node with
+    | Mat(a, b), Mat(c,d) when mdim_equal a c -> (a, b, d)
+    | _,_ -> tacerror "bad mats: %a, %a" pp_ty ty1 pp_ty ty2
+else
+    match ty1.ty_node, ty2.ty_node with
+    | Mat(a,b), Mat(c,d) when mdim_equal b d -> (a, c, d)
+    | _,_ -> tacerror "bad mats: %a, %a" pp_ty ty1 pp_ty ty2
+
+let ty_fold wh ty1 ty2 = if wh then
+    match ty1.ty_node, ty2.ty_node with
+    | Mat(a,b), Mat(c,d) -> mk_Mat a (MDPlus(b,d))
+    | _,_ -> assert false
+else
+    match ty1.ty_node, ty2.ty_node with
+    | Mat(a,b), Mat(c,d) -> mk_Mat (MDPlus(a,c)) d
+    | _,_ -> assert false
+
+let r_matfold wh i j ju = 
+    if i >= j then tacerror "first must be earlier";
+    let se = ju.ju_se in
+    match (get_se_ctxt se i), (get_se_ctxt se j) with
+    | (GSamp(a, (ty1, exc1)), sec1), (GSamp(b, (ty2, exc2)), _) ->
+      if exc1 <> [] || exc2 <> [] then tacerror "excepted distribution not
+      allowed";
+      let _ = ensure_ty_fold wh ty1 ty2 in
+      let ab_ty = ty_fold wh ty1 ty2 in
+      let sab = VarSym.mk (mk_name ~name:"AB" se) ab_ty in
+      let ab = mk_V sab in
+      let subst e = if wh then 
+          let e1 = e_replace (mk_V a) (mk_MatSplitLeft ab) e in
+          e_replace (mk_V b) (mk_MatSplitRight ab) e1
+      else
+          let e1 = e_replace (mk_V a) (mk_MatTrans (mk_MatSplitLeft (mk_MatTrans
+          ab))) e in
+          e_replace (mk_V b) (mk_MatTrans (mk_MatSplitRight (mk_MatTrans ab)))
+          e1
+      in
+      let se = set_se_ctxt [ GSamp(sab, (ab.e_ty, [])) ] sec1 in (* set a samp to
+      AB samp*)
+      let (_, sec) = get_se_ctxt se j in
+      let se = set_se_ctxt [] sec in
+      let se = map_se_exp subst se in
+      Rmatfold(wh,i,j), [ {ju with ju_se = se} ]
+    | _,_ -> tacerror "not good samp"
+
 
 let ct_matfold wh i j = prove_by (r_matfold wh i j)
 
@@ -225,7 +270,7 @@ let r_matunfold wh i ju =
     match get_se_ctxt se i with
     | GSamp(ab, (ty, exc)), sec ->
       if exc <> [] then tacerror "excepted distribution not allowed";
-      let ((x,y),z) = ensure_ty_unfold wh ty in (*if wh then ab is
+      let _ = ensure_ty_unfold wh ty in (*if wh then ab is
       Matrix_{z,x+y}; if not wh then ab is Matrix_{x+y,z} *)
       let (a_ty, b_ty) = split_ty_unfold wh ty in
       let sa = VarSym.mk (mk_name ~name:"A" se) a_ty in
@@ -238,7 +283,7 @@ let r_matunfold wh i ju =
       let se = set_se_ctxt [ GSamp(sa, (a.e_ty, [])); GSamp(sb, (b.e_ty, [])) ] sec in
       let se = map_se_exp subst se in
       Rmatunfold(wh,i), [ {ju with ju_se = se } ] 
-      
+    | _ -> tacerror "not good samp" 
       
 
 let ct_matunfold wh i = prove_by (r_matunfold wh i)
