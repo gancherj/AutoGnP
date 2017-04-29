@@ -238,8 +238,15 @@ let wf_lcmds ctype wfs0 exported_vsyms odef0 =
   go wfs0 ~do_export odef0
 
 let wf_obody ctype wfs osym vs exported_vsyms (lcmds,e) =
-   assert (   equal_ty osym.OrclSym.dom (ty_prod_vs vs)
-           && equal_ty osym.OrclSym.codom e.e_ty);
+   if (not (equal_ty osym.OrclSym.dom (ty_prod_vs vs))) then 
+      failwith (fsprintf "Wf: oracle input wrong: got %a, expected %a" pp_ty
+      (ty_prod_vs vs) pp_ty osym.OrclSym.dom);
+   if (not (equal_ty osym.OrclSym.codom e.e_ty)) then
+       failwith (fsprintf "Wf: oracle output wrong: got %a, expected %a" pp_ty
+       e.e_ty pp_ty
+       osym.OrclSym.codom);
+   (*assert (   equal_ty osym.OrclSym.dom (ty_prod_vs vs)
+           && equal_ty osym.OrclSym.codom e.e_ty); *)
    let wfs = ensure_varnames_fresh wfs vs in
    begin match exported_vsyms with
    | None -> ()

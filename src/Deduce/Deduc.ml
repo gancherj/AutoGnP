@@ -48,8 +48,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Not, [e]            -> add_known e (mk_Not inv)
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
-      | MatConcat, [e1; e2] -> add_known e (mk_MatSplitLeft e1); add_known e
-      (mk_MatSplitRight e2)
+      | MatConcat, [e1; e2] -> add_known e1 (mk_MatSplitLeft inv); add_known e2
+      (mk_MatSplitRight inv)
       | (FMinus | FDiv), _  -> ()
       | (Eq| Not | Ifte), _ -> ()
       | EMap _, _           -> ()

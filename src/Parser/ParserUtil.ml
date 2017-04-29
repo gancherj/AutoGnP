@@ -317,7 +317,8 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
     in
     let e = expr_of_parse_expr vmap ts Unqual e in
     if not (Type.equal_ty e.E.e_ty asym.AdvSym.dom) then
-      fail_parse "adversary argument has wrong type";
+      tacerror "Parser: adversary argument has wrong type: got %a, expected %a" Type.pp_ty
+      e.E.e_ty Type.pp_ty asym.AdvSym.dom;
     let os = L.map (odef_of_parse_odef vmap ts) os in
     let cty = asym.AdvSym.codom in
     begin match cty.Type.ty_node, vs with
