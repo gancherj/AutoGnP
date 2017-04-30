@@ -7,18 +7,35 @@ assumption LWE
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
 operator Rinj : BS_rinjr -> Matrix_{m,m}. (* Rr has the denotation m^2 *)
-adversary Adv_LHL : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,1}) -> Bool.
-
-assumption LHL
-[ A <-$ Matrix_{n,m}; rinjr <-$ BS_rinjr; let R = Rinj(rinjr); w <-$ Matrix_{m,1}; b <- Adv_LHL(A,A*R,(tr R) * w);]
-[ A <-$ Matrix_{n,m}; rinjr <-$ BS_rinjr; let R = Rinj(rinjr); B <-$ Matrix_{n,m}; w <-$ Matrix_{m,1}; b <- Adv_LHL(A,B,(tr R) * w);].
 
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
+
+adversary Adv_LHL : (BS_tgr * BS_chir * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m} * Matrix_{m+1,1}) -> Bool.
+assumption LHL
+[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; chir <-$ BS_chir;
+  b <- Adv_LHL(tgr, chir, TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
+    (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));]
+[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; chir <-$ BS_chir; B <-$ Matrix_{n,m}; b <- Adv_LHL(tgr, chir,  TrapGen(tgr)#0,B, (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));].
+
+
+
 operator SampleLeft : (BS_slr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator SampleRight : 
 (BS_srr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator IdHash : BS_n -> Matrix_{n,n}. (* domain of this could change *)
+
+
+(* just used to introduce irrelevant samples *)
+adversary A_dkillnm : () -> Bool.
+assumption [inf] dkill_nm [
+  a <-$ Matrix_{n,m}; b <- A_dkillnm();
+] [ b <- A_dkillnm();].
+
+adversary A_dkilltgr : () -> Bool.
+assumption [inf] dkill_tgr [
+  tgr <-$ BS_tgr; b <- A_dkilltgr();
+] [ b <- A_dkilltgr();].
 
 
 
@@ -38,9 +55,9 @@ bound_adv [
   i' <- Adv1();
 
   (* public parameter *)
-  tgr <-$ BS_tgr;
-  let A = TrapGen(tgr)#0;
-  let TA = TrapGen(tgr)#1;
+  tgrA <-$ BS_tgr;
+  let A = TrapGen(tgrA)#0;
+  let TA = TrapGen(tgrA)#1;
     A1 <-$ Matrix_{n,m};
     B <-$ Matrix_{n,m};
     u <-$ Matrix_{n,1};
@@ -49,7 +66,7 @@ bound_adv [
     b <-$ Bool;
   let Hid' = IdHash(i');
     s <-$ Matrix_{n,1};
-    Rr <-$ BS_rinjr; let R = Rinj(Rr);
+    rinjr <-$ BS_rinjr; let R = Rinj(rinjr);
     chir <-$ BS_chir; let e0 = tr sl tr Chi(chir); let e1 = tr sr tr Chi(chir);
   let c0 = (tr s) * (A || Hid' * B) + (tr e0 || (tr e0) * R);
   let c1 = (tr s) * u + e1 + Minj(b);
@@ -64,6 +81,34 @@ bound_adv [
   (*  b' <- A3(challenge ciphertext of b) with KG oracle *)
   ] : b = b'.
   norm.
-  
 
-  
+  (* H1: rewrite A1 into A*R - Hid'*B  *)
+  move tgrA 1.
+  move rinjr 2.
+  move chir 3.
+
+  move B 1.
+  rnd A1 (A1 -> A1 - IdHash(i') * B) (A1 -> A1 + IdHash(i') * B).
+  norm.
+  move B 6.
+ trans* [subst 10 (A1 -> TrapGen(tgrA)#0 *Rinj(rinjr))].
+  R: assumption_decisional! LHL -> t.
+   LR:  norm.
+ R: rename A1 z.
+   R: rename t A1.
+ enable_debug.
+ assumption_decisional! dkill_nm <- z.
+ move z 6; ///=.
+ R: move A1 6.
+   dist_eq.
+
+ 
+
+ (* H2: rewrite SampleLeft(slr, A, AR - H*B + Hid * B, T_A, u) where A,TA trapgen, B uniform into
+                SampleRight(A, (Hid - H* ) * B, R, T_B, u) where A uniform, B,TB trapgen *) 
+
+ trans* [insert tgrA [A <-$ Matrix_{n,m};]].
+ assumption_decisional! dkill_nm <- z; dist_eq.
+
+ trans* [insert tgrA [tgrB <-$ BS_tgr;]].
+ LR: norm. assumption_decisional! dkill_nm <- tgrB. //. dist_eq.
