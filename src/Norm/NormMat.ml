@@ -163,7 +163,13 @@ and norm_mult nfo e e' =
     mk_MatOpp (mk_MatMult e e')
     | true, false -> let (e,e') = (nf (extract_opp e), e') in
     mk_MatOpp (mk_MatMult e e')
-    | false, false -> mk_MatMult e e' 
+    | false, false -> 
+            
+    if is_concat e' then
+        let (e'1,e'2) = extract_concat e' in
+        nf (mk_MatConcat (mk_MatMult e e'1) (mk_MatMult e e'2))
+    else
+    mk_MatMult e e' 
 
     (* - - a -> a *)
 and norm_opp nfo e = 

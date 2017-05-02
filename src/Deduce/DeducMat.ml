@@ -181,6 +181,12 @@ and solve_trans seen ecs e1 =
 
 let solve_mat ecs e =
     let e = Norm.norm_expr ~strong:true e in
+    (if (List.length ecs = 0)  then log_i (lazy (fsprintf "nothing given :("))
+    else
+
+    List.iter (fun ei -> 
+        log_i (lazy (fsprintf "(%a,%a)" pp_expr (fst ei) pp_expr
+        (expr_of_inverter (snd ei))))) ecs);
     let ecs = extend_splits ecs in
     let ecs = extend_trans ecs in
     let ecs = extend_splits ecs in
@@ -189,12 +195,6 @@ let solve_mat ecs e =
     let ecs = norm_ecs ecs in 
     
     let seen = ref (Hashtbl.create 100) in
-    (if (List.length ecs = 0)  then log_i (lazy (fsprintf "nothing given :("))
-    else
-
-    List.iter (fun ei -> 
-        log_i (lazy (fsprintf "(%a,%a)" pp_expr (fst ei) pp_expr
-        (expr_of_inverter (snd ei))))) ecs);
 
     let a1 = solve_mat' seen ecs e in
     match a1 with
