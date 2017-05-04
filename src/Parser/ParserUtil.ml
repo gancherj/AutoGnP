@@ -202,6 +202,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Exp(e1,e2)     -> E.mk_GExp (go e1) (go e2)
     | CGen(s)        -> E.mk_GGen (create_groupvar ts s)
     | MatZ(s1,s2)    -> E.mk_MatZero (create_dimvar ts s1) (create_dimvar ts s2)
+    | MatI(s1,s2)    -> E.mk_MatId  (create_dimvar ts s1) (create_dimvar ts s2)
     | CZ(s)          -> E.mk_Z (create_lenvar ts s)
     | Trans(e)       -> E.mk_MatTrans (go e)
     | SplitLeft(e)   -> E.mk_MatSplitLeft (go e)

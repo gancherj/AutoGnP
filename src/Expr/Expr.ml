@@ -49,6 +49,7 @@ type cnst =
   | Z           (* $0$ bitstring (type defines length) *)
   | B of bool   (* boolean value *)
   | MatZero
+  | MatId
 
 type op =
   (* bilinear groups *)
@@ -115,6 +116,7 @@ let cnst_hash = function
   | Z      -> 3
   | B b    -> if b then 4 else 5
   | MatZero-> 6
+  | MatId -> 7
 
 let op_hash = function
   | GExp gv        -> hcomb 1 (Groupvar.hash gv)
@@ -215,6 +217,11 @@ module He = E.H
 
 exception TypeError of (ty * ty * expr * expr option * string)
 
+let ensure_mdim_equal n m =
+   match (mdim_equal n m) with
+   | true -> ()
+   | _ -> failwith (fsprintf "Identity requires equal mdim")
+
 let ensure_ty_equal ty1 ty2 e1 e2 s =
   ignore (equal_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
@@ -259,6 +266,11 @@ let mk_False = mk_B false
 
 
 let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
+
+
+let mk_MatId n m =
+    ensure_mdim_equal n m;
+    mk_Cnst MatId (mk_Mat n m)
 
 (* *** Fixed arity mk functions *)
 

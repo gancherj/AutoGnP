@@ -171,6 +171,7 @@ let pp_cnst fmt c ty =
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
   | B b    -> F.fprintf fmt "%b" b
   | MatZero -> F.fprintf fmt "0%%%a" pp_ty ty
+  | MatId  -> F.fprintf fmt "I%%%a" pp_ty ty
 
 (** Constructor above the current expression. *)
 type 'a above =

@@ -36,6 +36,11 @@ let unary_app_extract op e = match e.e_node with | App(op', [e']) when op'=op ->
     log_i (lazy (fsprintf "uhoh: expected op %a, got exp %a" pp_op (op,[e]) pp_expr
     e)); assert false
 
+let binary_app_extract op e = match e.e_node with | App(op', [e1;e2]) when
+op'=op -> (e1,e2) | _ ->
+    log_i (lazy (fsprintf "uhoh")); assert false
+
+
 let plus_unary_extract op es =  mk_MatPlus (List.map (unary_app_extract op) es)
 
 let find_i ecs e =
@@ -78,6 +83,7 @@ let split_exists ecs e =
     then true else false
     else
         false
+
 
 let find_split (ecs : (expr * inverter) list) e =
     let eL = mk_MatSplitLeft e in
@@ -125,6 +131,11 @@ let rec solve_mat' seen_already (ecs : (expr * inverter) list) (e : expr) =
     | App(MatTrans, [e1]) -> (solve_trans seen_already ecs e1)
     | App(MatSplitLeft, [e]) -> solve_split seen_already mk_MatSplitLeft ecs e
     | App(MatSplitRight, [e]) -> solve_split seen_already mk_MatSplitRight ecs e
+    | App(MatConcat, [e1;e2]) -> (solve_concat seen_already ecs e1 e2) (* todo
+    *)
+    | App(MatOpp, [e])       -> (solve_opp seen_already ecs e) (* todo *)
+    | App(MatMinus, [e1;e2]) -> (solve_minus seen_already ecs e1 e2) (* todo *)
+
     | _ -> None
     
         in
@@ -136,6 +147,19 @@ and solve_split seen spf ecs e =
     | Some a -> Some (I (spf (expr_of_inverter a)))
     | None -> None
     
+and solve_opp seen ecs e =
+    match (solve_mat' seen ecs e) with
+    | Some a -> Some (I (mk_MatOpp (expr_of_inverter a)))
+    | None -> None
+
+and solve_minus seen ecs e1 e2 = solve_mat' seen ecs (mk_MatPlus [e1 ;(mk_MatOpp
+e2)])
+
+and solve_concat seen ecs e1 e2 =
+    match (solve_mat' seen ecs e1, solve_mat' seen ecs e2) with
+    | Some a1, Some a2 -> Some (I (mk_MatConcat (expr_of_inverter a1)
+    (expr_of_inverter a2)))
+    | _ -> None
 
 and try_solve_all seen ecs es = match es with
 | [] -> None
@@ -163,14 +187,24 @@ and solve_plus seen ecs es =
             None
             
 and solve_mult seen ecs e1 e2 =
-    let a1 = solve_mat' seen ecs e1 in
+    let a1 = solve_mat' seen ecs e1 in (* try to solve e1 and e2 *)
     let a2 = solve_mat' seen ecs e2 in
     match a1, a2 with
     | Some i1, Some i2 ->
     let e1' = expr_of_inverter i1 in
     let e2' = expr_of_inverter i2 in
     Some (I (mk_MatMult e1' e2'))
-    | _ -> None
+    | _ -> 
+    
+    if (is_app MatMult e2) then (* try reassociated version *)
+    let (e21, e22) = binary_app_extract MatMult e2 in
+    match (solve_mat' seen ecs (mk_MatMult (mk_MatMult e1 e21) e22)) with
+    | Some a -> Some a
+    | None ->
+            None
+
+    else
+        None
 
 and solve_trans seen ecs e1 =
     match (solve_mat' seen ecs e1) with

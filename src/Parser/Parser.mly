@@ -65,7 +65,7 @@
 %token <string> MGET_ID
 %token <string> MVAR_ID
 
-%token MATZERO
+%token MATZERO MATID
 %token <string> GEN
 %token <string> ZBS
 
@@ -245,6 +245,7 @@ expr8 :
 | i=NAT                                   { CFNat(i) }
 | i=GEN                                   { CGen(i) }
 | MATZERO d1=dimexp COMMA d2=dimexp RCBRACE { MatZ(d1,d2)}                        
+| MATID d1=dimexp COMMA d2=dimexp RCBRACE { MatI(d1,d2)}                        
 | i=ZBS                                   { CZ(i) }
 | TRUE                                    { CB(true) }
 | FALSE                                   { CB(false) }

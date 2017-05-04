@@ -40,6 +40,7 @@ type cnst =
   | Z           (* $0$ bitstring (type defines length) *)
   | B of bool   (* boolean value *)
   | MatZero
+  | MatId
 
 type op =
   (* bilinear groups *)
@@ -142,6 +143,7 @@ val mk_FOne        : expr
 val mk_FZ          : expr
 val mk_Z           : Lenvar.id -> expr
 val mk_MatZero     : mdim -> mdim -> expr
+val mk_MatId      : mdim -> mdim -> expr
 val mk_B           : bool -> expr
 val mk_True        : expr
 val mk_False       : expr

@@ -18,6 +18,8 @@ let rec rem_first_eq e xs = match xs with
 
 let is_zero e = match e.e_node with Cnst(MatZero) -> true | _ -> false
 
+let is_id e = match e.e_node with Cnst(MatId) -> true | _ -> false
+
 let is_opp_sym e e' = (e = (mk_MatOpp e')) || ((mk_MatOpp e) = e')
 
 let contains_op e es = List.exists (fun x -> is_opp_sym e x) es
@@ -124,10 +126,11 @@ and norm_mat_op nf e op es =
     | MatConcat, [e1;e2] -> norm_concat nf e1 e2
     | MatSplitLeft, [e1] -> norm_splitleft nf e1
     | MatSplitRight, [e1] -> norm_splitright nf e1
-    | FunCall(f), _ -> e
+    (*| FunCall(f), _ -> e
     | Ifte, [e1; e2; e3] -> mk_Ifte e1 (norm_mat_expr nf e2) (
-    nf e3)
+    nf e3) *)
     | _, _ -> nf e
+
 
 and norm_mat_nop nf e nop es =
     match nop with
@@ -148,6 +151,10 @@ and norm_mat_nop nf e nop es =
 and norm_mult nfo e e' =
     let nf = norm_mat_expr nfo in
     let (e,e') = (nf e, nf e') in
+    match (is_id e, is_id e') with
+    | true, _ -> e'
+    | _, true -> e
+    | _ ->
     if (is_zero e) || (is_zero e') then
         let (a,_) = ensure_mat_ty e.e_ty in let (_,d) = ensure_mat_ty e'.e_ty in
         mk_MatZero a d
@@ -169,6 +176,7 @@ and norm_mult nfo e e' =
         let (e'1,e'2) = extract_concat e' in
         nf (mk_MatConcat (mk_MatMult e e'1) (mk_MatMult e e'2))
     else
+
     mk_MatMult e e' 
 
     (* - - a -> a *)

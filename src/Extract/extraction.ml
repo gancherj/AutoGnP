@@ -87,6 +87,7 @@ let string_of_cnst file ty = function
   | Z      -> fsprintf "%s.zeros" (lvar_mod file (destr_BS_exn ty))
   | B b    -> fsprintf "%b" b
   | MatZero-> fsprintf "matzero"
+  | MatId -> fsprintf "matid"
 
 let rec expression file e = 
   match e.e_node with 
