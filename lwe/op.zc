@@ -1,8 +1,21 @@
 bound_adv [
-  a <-$ Matrix_{a,b};
-  r <-$ Matrix_{b,b};
-  let z = (a || a * r);
+  R <-$ Matrix_{m,m};
+  A <-$ Matrix_{n,m};
+  s <-$ Matrix_{n,1};
+  e1 <-$ Matrix_{1,m};
+  let z = (e1 * (I_{m,m} || R)) + (tr s * A) * (I_{m,m} || R);
 ] : false.
+norm_nounfold.
+subst ((e1 * (I_{m,m} || R) + (tr s * A) * (I_{m,m} || R )) -> (e1 + tr s * A) * (I_{m,m} || R)).
+enable_debug.
+norm_solve z.
+
+//=.
+trans* [subst z ((a+b)*c -> a * c + b*c)].
+LR: norm_nounfold.
+dist_eq.
+  norm_nounfold.
+subst (a * c + b * c -> (a + b) * c).
 subst (a || (a * r) -> a * (I_{b,b} || r)).
 norm_nounfold.
 norm.

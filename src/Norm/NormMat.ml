@@ -1,4 +1,3 @@
-(* todo refactor *)
 open Expr
 open ExprUtils
 open Util
@@ -17,8 +16,6 @@ let rec rem_first_eq e xs = match xs with
 (* find instances of e and -e in es, and remove the pair if found *)
 
 let is_zero e = match e.e_node with Cnst(MatZero) -> true | _ -> false
-
-let is_id e = match e.e_node with Cnst(MatId) -> true | _ -> false
 
 let is_opp_sym e e' = (e = (mk_MatOpp e')) || ((mk_MatOpp e) = e')
 
@@ -39,11 +36,6 @@ let remove_opps es =
     List.fold_left rem_opps_step [] es
 
 
-let is_opp e = match e.e_node with App(MatOpp, _) -> true | _ -> false
-
-let extract_opp e = match e.e_node with 
-    | App(MatOpp, [e]) -> e 
-    | _ -> assert false
 
 let is_splitleft e = match e.e_node with App(MatSplitLeft, _) -> true | _ -> false
 
@@ -79,11 +71,7 @@ let rem_splitpairs es1 es2 =
     let (matched_pairs, sls, srs) = accum_splitpair [] sl_es1 sr_es2 in
     (matched_pairs, sls @ es1', srs @ es2')
 
-let is_concat e = match e.e_node with App(MatConcat, _) -> true | _ -> false
 
-let extract_concat e = match e.e_node with
-    | App(MatConcat, [e1;e2]) -> (e1,e2)
-    | _ -> assert false
 
 let is_plus e = match e.e_node with Nary(MatPlus, _) -> true | _ -> false
 
@@ -103,38 +91,36 @@ let extract_mult e = match e.e_node with
     | App(MatMult, [e1;e2]) -> (e1, e2)
     | _ -> assert false
 
-let is_tr e = match e.e_node with App(MatTrans, _) -> true | _ -> false
-
-let extract_tr e = match e.e_node with
-    | App(MatTrans, [e]) -> e
-    | _ -> assert false
 
 
-let rec norm_mat_expr nf e = 
+let rec norm_mat_expr nf  e =
+    log_i (lazy (fsprintf "normalizing %a" pp_expr e));
     let ans = (match e.e_node with
-    | App(op,es) -> norm_mat_op nf e op es
-    | Nary(nop, es) -> norm_mat_nop nf e nop es
+    | App(op,es) -> norm_mat_op nf e op es  
+    | Nary(nop, es) -> norm_mat_nop nf e nop es  
     | _ -> nf e) in
     ans
+    
 
-and norm_mat_op nf e op es =
+
+and norm_mat_op nf e op es  =
     match op, es with
-    | MatMult, [e1;e2] -> norm_mult nf e1 e2
-    | MatOpp, [e1] -> norm_opp nf e1
-    | MatTrans, [e1] -> norm_trans nf e1
-    | MatMinus, [e1;e2] -> norm_minus nf e1 e2
-    | MatConcat, [e1;e2] -> norm_concat nf e1 e2
-    | MatSplitLeft, [e1] -> norm_splitleft nf e1
-    | MatSplitRight, [e1] -> norm_splitright nf e1
+    | MatMult, [e1;e2] -> norm_mult nf e1 e2   
+    | MatOpp, [e1] -> norm_opp nf e1   
+    | MatTrans, [e1] -> norm_trans nf e1   
+    | MatMinus, [e1;e2] -> norm_minus nf e1 e2   
+    | MatConcat, [e1;e2] -> norm_concat nf e1 e2   
+    | MatSplitLeft, [e1] -> norm_splitleft nf e1   
+    | MatSplitRight, [e1] -> norm_splitright nf e1   
     (*| FunCall(f), _ -> e
     | Ifte, [e1; e2; e3] -> mk_Ifte e1 (norm_mat_expr nf e2) (
     nf e3) *)
     | _, _ -> nf e
 
 
-and norm_mat_nop nf e nop es =
+and norm_mat_nop nf e nop es    =
     match nop with
-    | MatPlus -> norm_plus nf es
+    | MatPlus -> norm_plus nf es   
     | _ -> nf e 
 
 (* Normalization of operators: *)
@@ -148,163 +134,146 @@ and norm_mat_nop nf e nop es =
 (* Normalize a*b:
     * (-a) * b -> - (a*b) *)
 
-and norm_mult nfo e e' =
-    let nf = norm_mat_expr nfo in
-    let (e,e') = (nf e, nf e') in
-    match (is_mult e') with
-    | true -> let (e1,e2) = extract_mult e' in nf (mk_MatMult (mk_MatMult e e1)
-    e2)
-    | _ ->
+and norm_mult nfo e e'   =
+    let nf = norm_mat_expr nfo   in
+    let (e,e') =  (nf e, nf e') in
+    match e.e_node, e'.e_node with
+    (* e * (e1 * e2) -> (e * e1) * e2 *)
+    | _, App(MatMult, [e1;e2]) -> nf (mk_MatMult (mk_MatMult e e1) e2)
+    (* I * e' -> e' *)
+    | Cnst(MatId), _ -> e'
+    (* e * I -> e *)
+    | _, Cnst(MatId) -> e
+    (* 0 * e = e * 0 = 0 *)
+    | Cnst(MatZero), _ | _, Cnst(MatZero) -> 
+            let ((a,_),(_,d)) = (ensure_mat_ty e.e_ty, ensure_mat_ty e'.e_ty) in
+            mk_MatZero a d
+    (* -e * -e' -> e * e'
+     * -e * e' = e * -e' = - (e * e') *)
+    | App(MatOpp,[e1]), App(MatOpp,[e'1]) -> nf (mk_MatMult e1 e'1)
+    | App(MatOpp,[e1]), _ -> nf (mk_MatOpp (mk_MatMult e1 e'))
+    | _, App(MatOpp, [e'1]) -> nf (mk_MatOpp (mk_MatMult e e'1))
+    (* e * e'1||e'2 -> e*e'1 || e*e'2 *)
+    | _, App(MatConcat, [e'1;e'2]) -> nf (mk_MatConcat (mk_MatMult e e'1)
+    (mk_MatMult e e'2))
+    (* (a+b) * c -> a * c + b * c *)
+    | Nary(MatPlus, es), _ -> nf (mk_MatPlus (
+                                List.map (fun x -> (mk_MatMult x e')) es))
+    (* a * (b + c) -> a * b + a * c *)
+    | _, Nary(MatPlus, e's) -> nf (mk_MatPlus (
+                                List.map (fun x' -> (mk_MatMult e x')) e's))
+    | _, _ -> mk_MatMult e e'
 
-    match (is_id e, is_id e') with
-    | true, _ -> e'
-    | _, true -> e
-    | _ ->
-    if (is_zero e) || (is_zero e') then
-        let (a,_) = ensure_mat_ty e.e_ty in let (_,d) = ensure_mat_ty e'.e_ty in
-        mk_MatZero a d
-    else
 
-    let o1 = is_opp e in
-    let o2 = is_opp e' in
-
-    match o1,o2 with (* move opp up mult *)
-    | true, true -> let (e,e') = (nf (extract_opp e), nf
-    (extract_opp e')) in mk_MatMult e e'
-    | false, true -> let (e,e') = (e, nf (extract_opp e')) in
-    mk_MatOpp (mk_MatMult e e')
-    | true, false -> let (e,e') = (nf (extract_opp e), e') in
-    mk_MatOpp (mk_MatMult e e')
-    | false, false -> 
-            
-    if is_concat e' then
-        let (e'1,e'2) = extract_concat e' in
-        nf (mk_MatConcat (mk_MatMult e e'1) (mk_MatMult e e'2))
-    else
-
-    mk_MatMult e e' 
-
-    (* - - a -> a *)
-and norm_opp nfo e = 
-    let nf = norm_mat_expr nfo in
+and norm_opp nfo e    = 
+    let nf = norm_mat_expr nfo    in
     let e = nf e in
-    let e = if is_opp e then begin 
-        nf (extract_opp e)
-        end
-        else e 
-    in
-    if is_plus e then let es = extract_plus e in
-        mk_MatPlus (List.map mk_MatOpp es)
-    else
-        mk_MatOpp e
+    match e.e_node with
+    (* --e -> e *)
+    | App(MatOpp, [e']) -> nf e'
+    (* -(a+b) -> -a + -b *)
+    | Nary(MatPlus, es) -> nf (mk_MatPlus (List.map mk_MatOpp es))
+    | _ -> mk_MatOpp e
 
     (* tr (a * b) -> (tr b) * (tr a) 
      * tr (a + b) -> tr a + tr b
      * tr (a - b) -> tr a - tr b
      * tr (-a) -> - (tr a) *)
 
-and norm_trans nfo e =
-    let nf = norm_mat_expr nfo in
-    let e = nf e in
-    if is_mult e then
-        let (a,b) = extract_mult e in
-        let a = nf a in
-        let b = nf b in
-        nf (mk_MatMult (mk_MatTrans b) (mk_MatTrans a))
-    else if is_minus e then
-        let (a,b) = extract_minus e in
-        let a = nf a in
-        let b = nf b in
-        nf (mk_MatMinus (mk_MatTrans a) (mk_MatTrans b))
-    else if is_opp e then
-        let a = extract_opp e in
-        let a = nf a in
-        nf (mk_MatOpp (mk_MatTrans a))
-    else if is_plus e then
-        let es = extract_plus e in
-        let es = List.map (fun x -> nf x) es in
-        let es = List.map (fun x -> mk_MatTrans x) es in
-        nf (mk_MatPlus es)
-    else if is_tr e then
-        let e = extract_tr e in
-        nf e
-    else
-        mk_MatTrans e
+and norm_trans nfo e    =
+    let nf = norm_mat_expr nfo    in
+    let e = nf e  in
+    match e.e_node with
+    (* tr (a * b) = tr b * tr a *)
+    | App(MatMult, [a;b]) -> nf (mk_MatMult (mk_MatTrans b) (mk_MatTrans a))
+    (* tr (a - b) = tr a - tr b *)
+    | App(MatMinus, [a;b]) -> nf (mk_MatMinus (mk_MatTrans a) (mk_MatTrans b))
+    (* tr (-a) -> - (tr a *)
+    | App(MatOpp, [a]) -> nf (mk_MatOpp (mk_MatTrans a))
+    (* tr (a + b) -> tr a + tr b *)
+    | Nary(MatPlus, es) -> nf (mk_MatPlus (
+                            List.map (fun x -> mk_MatTrans x) es))
+    (* tr tr a = a *)
+    | App(MatTrans, [a]) -> nf a
+    | _ -> mk_MatTrans e
 
-and norm_plus nfo es = 
-    let nf = norm_mat_expr nfo in
-
+and norm_plus nfo es    = 
+    let nf = norm_mat_expr nfo    in
+    
     (* normalize each subterm *)
-    let es = List.map (fun x -> nf x) es in
+    let es = List.map nf es  in
 
     (* if any subexpressions are additions, lift up *)
     let (subadds, others) = List.partition (is_plus) es in
     let subs = List.flatten (List.map extract_plus subadds) in
     let es = subs @ others in 
-    let es = List.filter (fun x -> not (is_zero x)) es in (* remove zeroes *)
-    let es' = remove_opps es in (* look for ops that cancel *)
+    (* remove zeroes *)
+    let es = List.filter (fun x -> not (is_zero x)) es in
+    (* remove opps *)
+    let es' = remove_opps es in 
     let ans = (match (List.length es') with
     | 0 -> let (n,m) = ensure_mat_ty (List.hd es).e_ty in mk_MatZero n m
     | _ -> mk_MatPlus es') in
     ans
 
-and norm_minus nfo e1 e2 =
-    let nf = norm_mat_expr nfo in
-    let e1 = nf e1 in
-    let e2 = nf e2 in
+and norm_minus nfo e1 e2    =
+    let nf = norm_mat_expr nfo    in
+    let (e1, e2) = (nf e1, nf e2) in
+    (* a - b -> a + (-b) *)
     nf (mk_MatPlus [e1; mk_MatOpp e2])
 
 
 
-and norm_concat nfo e1 e2 = 
-    let nf = norm_mat_expr nfo in
-    let e1 = nf e1 in
-    let e2 = nf e2 in
-    if is_plus e1 && is_plus e2 then  (* plus *)
+and norm_concat nfo e1 e2   = 
+    let nf = norm_mat_expr nfo   in
+    let (e1, e2) =  (nf e1, nf e2) in
+    match e1.e_node, e2.e_node with
+    (* (sl a + b + c) || (sr a + d + e) -> a + (b + c) || (d + e) *) 
+    | Nary(MatPlus, e1s), Nary(MatPlus, e2s) ->
         (* find all splitpairs between e1 and e2,
         extract them *)
-        let t1 = (List.hd (extract_plus e1)).e_ty in
-        let t2 = (List.hd (extract_plus e2)).e_ty in
-        let es1 = List.map (nf) (extract_plus e1) in
-        let es2 = List.map (nf) (extract_plus e2) in
+        let t1 = (List.hd e1s).e_ty in
+        let t2 = (List.hd e2s).e_ty in
+        let es1 = List.map (nf) e1s in
+        let es2 = List.map (nf) e2s in
         let (pairs, es1, es2) = rem_splitpairs es1 es2 in
+        
+        (match pairs with
+        | [] -> mk_MatConcat e1 e2
+        | _ ->
         nf (mk_MatPlus (pairs @ [
-            mk_MatConcat (mk_MatPlus_safe es1 t1) (mk_MatPlus_safe es2 t2)]))
-    else if is_splitleft e1 && is_splitright e2 then (* sl x || sr x = x *)
-        if is_splitpair e1 e2 then nf (extract_splitleft e1)
+            mk_MatConcat (mk_MatPlus_safe es1 t1) (mk_MatPlus_safe es2 t2)])))
+    (* (sl a || sr a) -> a *)
+    | App(MatSplitLeft, [a]), App(MatSplitRight, [b]) ->
+        if a=b then nf a
         else mk_MatConcat e1 e2
-    else if is_zero e1 && is_zero e2 then (* 0 || 0 = 0, of correct dim *)
-        let (n,m) = ensure_mat_ty e1.e_ty in
-        let (_,m')= ensure_mat_ty e2.e_ty in
-        mk_MatZero n (Type.MDPlus(m,m'))
-    else if is_opp e1 && is_opp e2 then (* -a || -b = - (a || b) *)
-        nf (mk_MatOpp (mk_MatConcat (extract_opp e1)
-        (extract_opp e2)))
-    else
-        mk_MatConcat e1 e2
+    (* 0 || 0 -> 0 *)
+    | Cnst(MatZero), Cnst(MatZero) ->
+        let ((n,m),(_,m')) = (ensure_mat_ty e1.e_ty, ensure_mat_ty e2.e_ty) in
+        mk_MatZero n (Type.MDPlus (m,m'))
+    (* -a || -b -> - (a || b) *)
+    | App(MatOpp,[a]), App(MatOpp, [b]) ->
+            nf (mk_MatOpp (mk_MatConcat a b))
+    | _ -> mk_MatConcat e1 e2
 
-and norm_split nfo wh e =
+and norm_split nfo wh e   =
     let sp_f = if wh then mk_MatSplitRight else mk_MatSplitLeft in
-    let nf = norm_mat_expr nfo in
+    let nf = norm_mat_expr nfo   in
     let e = nf e in
-    if is_opp e then
-        mk_MatOpp (sp_f (extract_opp e))
-    else if is_plus e then (* sl (a + b) -> sl a + sl b *)
-        let es = List.map (nf) (extract_plus e) in
-        let es = List.map (sp_f) es in
-        nf (mk_MatPlus es)
-    else if is_concat e then
-        let (e1,e2) = extract_concat e in
-        if wh then nf e2 else nf e1
-    else if is_mult e then
-        let (e1,e2) = extract_mult e in
-        nf (mk_MatMult e1 (sp_f e2))
-    else
-        sp_f e 
+    match e.e_node with
+    (* split (-a) -> - (sp a) *)
+    | App(MatOpp, [a]) -> mk_MatOpp (sp_f a)
+    (* sp (a + b) -> sp a + sp b *)
+    | Nary(MatPlus,es) -> nf (mk_MatPlus (List.map sp_f es))
+    (* sp (a || b) -> (a or b) *)
+    | App(MatConcat,[a;b]) -> if wh then nf b else nf a
+    (* sp (a * b) -> a * (sp b) *)
+    | App(MatMult, [a;b]) -> nf (mk_MatMult a (sp_f b))
+    | _ -> sp_f e
 
-and norm_splitleft nf e = norm_split nf false e
+and norm_splitleft nf e   = norm_split nf false e   
 
-and norm_splitright nf e = norm_split nf true e
+and norm_splitright nf e   = norm_split nf true e   
 
 let rec intersect_plus acc es1 es2 = match es1 with
     | [] -> (acc, [], es2)
@@ -333,4 +302,4 @@ plusses and share things with es *)
         mk_Ifte b e1 e2
     else
         nf (mk_MatPlus (intersect @ [mk_Ifte b e1'
-        e2']))
+e2']))

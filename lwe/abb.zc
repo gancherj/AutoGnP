@@ -167,7 +167,7 @@ bound_adv [
      mat_fold 2 7.
  move AB 1.
  move s 2.
- move chir 3.
+ move chir 3. //=.
  norm. (* need to factor (a || ab) as a * (1 || b) *)
 abstract 9 e1 (sl tr Chi(chir)).
 abstract 9 A (sl AB).
@@ -176,11 +176,28 @@ abstract 9 R (Rinj(rinjr)).
 abstract 9 e2 (sr tr Chi(chir)).
 subst (e1 || (e1 * R) -> e1 * (I_{m,m} || R)).
 subst ((tr s * A) || (tr s * A * R) -> (tr s * A) * (I_{m,m} || R)).
+(* TODO: fix normalize so the below works *)
+subst ((e1 * (I_{m,m} || R) + (tr s * A) * (I_{m,m} || R )) -> (e1 + tr s * A) * (I_{m,m} || R)).
+trans* [subst b' (e1 * (I_{m,m} || R) + (tr s * A) * (I_{m,m} || R) -> (e1 + tr s * A) * (I_{m,m} || R))].
+enable_debug.
+LR:norm.
+dist_eq.
+abstract 14 c (I_{m,m} || R).
+abstract 14 d (tr s * A).
+subst (e1 * c + d * c -> (e1 + d) * c).
+subst ((e1 * (I_{m,m} || R))
+  + (tr s * A * (I_{m,m} || R)) ->
+  (e1 + (tr s * A)) * (I_{m,m} || R)).
 
-unfold A e1 u e2.
+
+subst (tr s * sr AB -> sr (tr s * AB)).
+subst (tr s * sl AB -> sl (tr s * AB)).
+abstract 10 
 abstract 10 arg (AB, s, chir).
 
-assumption_decisional! LWE ->  .
+
+
+assumption_decisional! LWE ->  [arg] .
 norm.
 
 rnd r__ (x -> tr x) (x -> tr x); //.
