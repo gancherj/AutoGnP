@@ -151,6 +151,11 @@ and norm_mat_nop nf e nop es =
 and norm_mult nfo e e' =
     let nf = norm_mat_expr nfo in
     let (e,e') = (nf e, nf e') in
+    match (is_mult e') with
+    | true -> let (e1,e2) = extract_mult e' in nf (mk_MatMult (mk_MatMult e e1)
+    e2)
+    | _ ->
+
     match (is_id e, is_id e') with
     | true, _ -> e'
     | _, true -> e

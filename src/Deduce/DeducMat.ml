@@ -31,6 +31,9 @@ let is_some o = match o with | Some _ -> true | None -> false
 let extract_opt o = match o with | Some e -> e | None -> assert false
 
 let is_app op e = match e.e_node with | App(op',_) when op'=op -> true | _ -> false
+
+let is_mult e = match e.e_node with | App(MatMult,_) -> true | _ -> false
+
 let unary_app_extract op e = match e.e_node with | App(op', [e']) when op'=op ->
     e' | _ -> 
     log_i (lazy (fsprintf "uhoh: expected op %a, got exp %a" pp_op (op,[e]) pp_expr
@@ -65,6 +68,7 @@ let extend_trans (ecs : (expr * inverter) list) =
         (mk_MatTrans e, I (mk_MatTrans (expr_of_inverter i))) in
     let ecst = List.map ex_tr ecs in
     ecs @ ecst
+
 
 let rec extend_splits (ecs : (expr * inverter) list) = match ecs with
     | [] -> []
@@ -185,7 +189,13 @@ and solve_plus seen ecs es =
     | Some e -> solve_mat' seen ecs e
     | None -> 
             None
-            
+           
+and try_all seen ecs es = match es with
+| [] -> None
+| e :: es -> match (solve_mat' seen ecs e) with
+             | Some i -> Some i
+             | None -> try_all seen ecs es
+
 and solve_mult seen ecs e1 e2 =
     let a1 = solve_mat' seen ecs e1 in (* try to solve e1 and e2 *)
     let a2 = solve_mat' seen ecs e2 in
@@ -195,16 +205,23 @@ and solve_mult seen ecs e1 e2 =
     let e2' = expr_of_inverter i2 in
     Some (I (mk_MatMult e1' e2'))
     | _ -> 
-    
-    if (is_app MatMult e2) then (* try reassociated version *)
-    let (e21, e22) = binary_app_extract MatMult e2 in
-    match (solve_mat' seen ecs (mk_MatMult (mk_MatMult e1 e21) e22)) with
-    | Some a -> Some a
-    | None ->
-            None
+   
+    let to_try = [] in
+    let to_try = 
+        if (is_mult e2) then (* try left-reassociated version *)
+        let (e21, e22) = binary_app_extract MatMult e2 in
+        let enew = mk_MatMult (mk_MatMult e1 e21) e22 in
+        enew :: to_try
+        else to_try in
 
-    else
-        None
+    let to_try =
+    if (is_mult e1) then
+        let (e11, e12) = binary_app_extract MatMult e1 in
+        let enew = mk_MatMult e11 (mk_MatMult e12 e2) in
+        enew :: to_try
+    else to_try in
+
+    try_all seen ecs to_try
 
 and solve_trans seen ecs e1 =
     match (solve_mat' seen ecs e1) with
@@ -214,19 +231,19 @@ and solve_trans seen ecs e1 =
     | None -> None
 
 let solve_mat ecs e =
-    let e = Norm.norm_expr ~strong:true e in
+    (*let e = Norm.norm_expr ~strong:true e in*)
     (if (List.length ecs = 0)  then log_i (lazy (fsprintf "nothing given :("))
     else
 
     List.iter (fun ei -> 
         log_i (lazy (fsprintf "(%a,%a)" pp_expr (fst ei) pp_expr
         (expr_of_inverter (snd ei))))) ecs);
-    let ecs = extend_splits ecs in
-    let ecs = extend_trans ecs in
-    let ecs = extend_splits ecs in
-    let ecs = extend_trans ecs in
-    let ecs = extend_splits ecs in
     let ecs = norm_ecs ecs in 
+    let ecs = extend_splits ecs in
+    let ecs = extend_trans ecs in
+    let ecs = extend_splits ecs in
+    let ecs = extend_trans ecs in
+    let ecs = extend_splits ecs in
     
     let seen = ref (Hashtbl.create 100) in
 

@@ -121,6 +121,8 @@ bound_adv [
   abstract 16 A1 a1t.
   
   trans* [subst 16 (a1t -> A * R)].
+    LR: norm.
+  enable_debug. 
   R: assumption_decisional! LHL -> z.
   LR:norm.
   assumption_decisional! dkill_nm <- z; //.
@@ -173,19 +175,12 @@ abstract 9 u (sr AB).
 abstract 9 R (Rinj(rinjr)).
 abstract 9 e2 (sr tr Chi(chir)).
 subst (e1 || (e1 * R) -> e1 * (I_{m,m} || R)).
-subst ((tr s * A) || (tr s * (A * R)) -> (tr s) * (A || A*R)).
-subst (A || A * R -> A * (I_{m,m} || R)).
+subst ((tr s * A) || (tr s * A * R) -> (tr s * A) * (I_{m,m} || R)).
 
-trans* [subst 13 (tr s * (A * (I_{m,m} || R)) -> (tr s * A) * (I_{m,m} || R))]. (* mult assoc *)
-admit.
+unfold A e1 u e2.
+abstract 10 arg (AB, s, chir).
 
-trans* [subst 13 ((e1 * (I_{m,m} || R) + (tr s * A * (I_{m,m} || R))) ->
-  ((e1 + tr s * A) * (I_{m,m} || R)))].
-admit.
-
-abstract 14 arg (AB, s, chir).
-
-assumption_decisional! LWE -> .
+assumption_decisional! LWE ->  .
 norm.
 
 rnd r__ (x -> tr x) (x -> tr x); //.
