@@ -1,4 +1,5 @@
 open Expr
+open Type
 open ExprUtils
 open Util
 
@@ -71,7 +72,41 @@ let rem_splitpairs es1 es2 =
     let (matched_pairs, sls, srs) = accum_splitpair [] sl_es1 sr_es2 in
     (matched_pairs, sls @ es1', srs @ es2')
 
+(* helper functions for a||b + c||d -> (a+c) || (b+d) *)
 
+let is_concatpair e1 e2 = (* if e1 = a||b, e2 = c||d, and dim(a) = dim(b),
+dim(c) = dim(d) *)
+    match e1.e_node, e2.e_node with
+    | App(MatConcat, [e11;e12]), App(MatConcat, [e21;e22]) ->
+    let ((n11,m11), (n12,m12),(n21,m21),(n22,m22)) = (ensure_mat_ty e11.e_ty,
+    ensure_mat_ty e12.e_ty, ensure_mat_ty e21.e_ty, ensure_mat_ty e22.e_ty) in
+    mdim_equal n11 n21 && mdim_equal m11 m21 && mdim_equal n12 n22 && mdim_equal
+    m12 m22
+    | _ -> false
+
+let combine_concatpair e1 e2 =
+    match e1.e_node, e2.e_node with
+    | App(MatConcat, [e11;e12]), App(MatConcat, [e21;e22]) ->
+            mk_MatConcat (mk_MatPlus [e11; e21]) (mk_MatPlus [e12;e22])
+    | _ -> assert false
+    
+
+let rec combine_concats_aux c cs =
+    match cs with
+    | [] -> (c, [])
+    | c' :: cs' -> if is_concatpair c c' then
+        let c'' = combine_concatpair c c' in
+        combine_concats_aux c'' cs'
+    else
+        let (a,b) = combine_concats_aux c cs' in
+        (a, c' :: b)
+
+let rec combine_concats cs =
+    match cs with
+    | [] -> []
+    | c :: cs -> 
+            let (c', cs') = combine_concats_aux c cs in
+            c' :: (combine_concats cs')
 
 let is_plus e = match e.e_node with Nary(MatPlus, _) -> true | _ -> false
 
@@ -94,7 +129,6 @@ let extract_mult e = match e.e_node with
 
 
 let rec norm_mat_expr nf  e =
-    log_i (lazy (fsprintf "normalizing %a" pp_expr e));
     let ans = (match e.e_node with
     | App(op,es) -> norm_mat_op nf e op es  
     | Nary(nop, es) -> norm_mat_nop nf e nop es  
@@ -211,6 +245,10 @@ and norm_plus nfo es    =
     let es = List.filter (fun x -> not (is_zero x)) es in
     (* remove opps *)
     let es' = remove_opps es in 
+
+    (* combine concats: a || b + c || d -> (a+b) || (c+d) *)
+    let es' = combine_concats es' in 
+
     let ans = (match (List.length es') with
     | 0 -> let (n,m) = ensure_mat_ty (List.hd es).e_ty in mk_MatZero n m
     | _ -> mk_MatPlus es') in
