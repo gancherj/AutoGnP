@@ -1,0 +1,102 @@
+
+operator O1 : (Fq * Fq) -> Fq.
+operator O2 : (Fq * Fq) -> Fq.
+
+  (* wish to say that the distribution:
+ 
+  x <-$ Fq;
+  i : Fq chosen from adversary 
+  O1(x,i)
+
+  is indistinguishable from distribution:
+
+  x <-$ Fq;
+  i : Fq chosen from adversary
+  O2(x,i)
+
+ *)
+
+(* I wish to prove the following: *)
+
+adversary A : () -> Bool.
+
+oracle orcl : Fq -> Fq.
+
+bound_dist [
+  b <- A() with orcl(i) = {
+  x <-$ Fq;
+    return O1(i,x);
+  };
+] : b
+[
+  b <- A() with orcl(i) = {
+  x <-$ Fq;
+    return O2(i,x);
+  };
+] : b.
+
+
+
+hybrid (1,1) {
+  x <-$ Fq;
+  return O2(i,x);
+}.
+
+move_main (1,1,1) mx.
+
+(* at this stage, while mx is sampled outside of the oracle, i is still bound inside the oracle *)
+
+
+(* ****** *)
+
+
+
+ (* one way is with multiple adversaries: (but I don't know how to use this assumption here) *)
+adversary As0 : () -> Fq.
+adversary As1 : Fq -> Bool.
+
+assumption assm [
+  x <-$ Fq;
+  i <- As0();
+  b <- As1(O1(x,i));
+]
+[
+  x <-$ Fq;
+  i <- As0();
+  b <- As1(O2(x,i));
+  ].
+
+
+  (* another way (but maybe this is bad) is to have holes in assumptions
+
+assumption (i : Fq) assm2 [
+  x <-$ Fq;
+  b <- As1(O1(x,i));
+]
+[
+  x <-$ Fq;
+  b <- As1(O2(x,i));
+].
+
+with the semantics that assm2 is a family of assumptions indexed over choice of i
+*)
+
+(* i could imagine using assumptions with holes, to say
+assumption_decisional! (1,1) assm2 -> .
+given an oracle index, the proof system tries to fill the hole of assm2 with the argument to the oracle at (1,1). *)
+
+
+ (* a third way (basically the same as above) is for assumptions to have oracles:
+ adversary A2 : () -> Bool.
+ oracle orclA2 : Fq -> Fq.
+ assumption assm3 [
+   x <-$ Fq;
+   b <- A2 with orclA2(i) = { return O1(x,i) };
+]
+[
+  x <-$ Fq;
+  b <- A2 with orclA2(i) = {return O2(x,i) };
+].
+  *)    
+
+
