@@ -9,10 +9,6 @@ assumption LWE
 [ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir <-$ BS_chir; b <- Adv_LWE (A, (tr A) * s + Chi(chir));]
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
-assumption LWE2
-[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir <-$ BS_chir; b <-
-  Adv_LWE (A, (tr A) * s + tr (tr Chim(chir) || tr Chi1(chir))); ]
-[ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
 operator Rinj : BS_rinjr -> Matrix_{m,m}. (* Rr has the denotation m^2 *)
 
@@ -33,13 +29,13 @@ assumption LHL
     (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));]
 [ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; chir <-$ BS_chir; B <-$ Matrix_{n,m}; b <- Adv_LHL(tgr, chir,  TrapGen(tgr)#0,B, (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));].
 
-assumption LHL2
-[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; chir <-$ BS_chir;
-  b <- Adv_LHL(tgr, chir, TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
-    (tr Chim(chir)) * Rinj(rinjr), tr (tr Chim(chir) || tr Chi1(chir)));]
-[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; chir <-$ BS_chir; B <-$ Matrix_{n,m}; b <- Adv_LHL(tgr, chir,  TrapGen(tgr)#0,B, (tr Chim(chir)) * Rinj(rinjr), tr (tr Chim(chir) || tr (Chi1(chir))));].
-
-
+(*assumption LHL (i : Matrix_{1,m})
+[
+  tgr <-$ BS_tgr; rinjr <-$ BS_rinjr;
+  b <- Adv_LHL(tgr, TrapGen(tgr)#0, TrapGen(tgr)#0 * Rinj(rinjr),
+    tr R * i);
+] [
+].*)
 
 operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator SampleRight : 

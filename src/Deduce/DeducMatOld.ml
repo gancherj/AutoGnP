@@ -131,20 +131,7 @@ let norm_ecs ecs =
         (Norm.norm_expr ~strong:true e, I (Norm.norm_expr ~strong:true (expr_of_inverter i))) in
     List.map norm_ex ecs
 
-let rec find_in_list ecs e =  match ecs with
-| [] -> None
-| ei :: ecs -> let (e',i) = ei in
-    if Norm.equalmod_expr e' e then Some i else find_in_list ecs e
-
-let rec solve_mat' depth ecs e =
-    if depth > 200 then None else
-
-    log_i (lazy (fsprintf "SOLVE MAT: trying to deduce %a" pp_expr e));
-    match find_in_list ecs e with
-    | Some i -> Some i
-    | None ->
-
-
+type matprog = | InProg | Ans of (inverter option)
 
 let rec solve_mat' seen_already (ecs : (expr * inverter) list) (e : expr) =
     if Hashtbl.mem !seen_already e then 
