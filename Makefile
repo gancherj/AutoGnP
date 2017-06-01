@@ -1,46 +1,46 @@
-DESTDIR    ?=
-PREFIX     ?= /usr/local
-VERSION    ?= $(shell date '+%F')
-INSTALL    := scripts/install/install-sh
-PWD        := $(shell pwd)
-
-BINDIR := $(PREFIX)/bin
-LIBDIR := $(PREFIX)/lib/autognp
-SHRDIR := $(PREFIX)/share/autognp
-
-INSTALL    := scripts/install/install-sh
-
-#############################################################################
-
+# --------------------------------------------------------------------
+DESTDIR ?=
+PREFIX  ?= /usr/local
+VERSION ?= $(shell date '+%F')
+INSTALL := scripts/install/install-sh
+PWD     := $(shell pwd)
+BINDIR  := $(PREFIX)/bin
+LIBDIR  := $(PREFIX)/lib/autognp
+SHRDIR  := $(PREFIX)/share/autognp
+INSTALL := scripts/install/install-sh
 UNAME_S := $(shell uname -s)
+
+CPPFLAGS ?=
+CXXFLAGS ?= -I/usr/local/include -I/opt/local/include
+LDFLAGS  ?= -L/opt/local/lib
+
+# --------------------------------------------------------------------
+LIBFLAGS := $(LDFLAGS:%=-lflags -cclib,%)
+
 ifeq ($(UNAME_S),Linux)
-  LIBFLAGS=-lflags -cclib,-Xlinker,-cclib,--no-as-needed,-cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
+  LIBFLAGS += -lflags -cclib,-Xlinker,-cclib,--no-as-needed
 endif
 ifeq ($(UNAME_S),Darwin)
-  LIBFLAGS=-lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
+  LIBFLAGS +=
 endif
 
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48-37" -use-menhir -menhir "menhir -v" -use-ocamlfind
+LIBFLAGS += -lflags -cclib,-Lc_src,-cclib,-lfactory,-cclib,-lfactorystubs
+
+# --------------------------------------------------------------------
+OCAMLBUILDFLAGS=-use-ocamlfind -cflags "-w +a-e-9-44-48-37"
 
 ifeq ($(shell echo $$TERM), dumb)
  OCAMLBUILDFLAGS += -classic-display -quiet
 endif
 
-#############################################################################
-
-.PHONY : clean all doc test autognp.native wsautognp.native test autognp wsautognp \
-  Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web build-toolchain web
+# --------------------------------------------------------------------
+.PHONY: clean all doc test test autognp wsautognp
+.PHONY: autognp.native wsautognp.native
 
 all: autognp.native
 
-autognp.native : stubs
+autognp.native: stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
-
-stubs:
-	@test -d _build/c_src || mkdir -p _build/c_src
-	@c++ -fPIC -c c_src/factory_stubs.cc -o _build/c_src/factory_stubs.o -I/usr/local/include/factory
-	@ar rc _build/c_src/libfactorystubs.a _build/c_src/factory_stubs.o
-	@c++ -shared -o _build/c_src/libfactorystubs.so _build/c_src/factory_stubs.o -lfactory
 
 install:
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
@@ -53,22 +53,46 @@ clean:
 	ocamlbuild -clean
 	-@rm -rf tutor.docdir
 
-factory : stubs
+factory: stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Factory.native
 
-wsautognp.native : stubs
+wsautognp.native: stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) wsautognp.native
 
-##########################################################################
+# --------------------------------------------------------------------
+STUB_SRC   := c_src
+STUB_BLD   := _build/$(STUB_SRC)
+STUB_OBJS  := factory_stubs.o
+STUB_LIBA  := libfactorystubs.a
+STUB_LIBSO := libfactorystubs.so
+
+stubs: $(STUB_BLD) $(STUB_BLD)/$(STUB_LIBA) $(STUB_BLD)/$(STUB_LIBSO)
+	@true
+
+$(STUB_BLD):
+	mkdir -p $(STUB_BLD)
+
+$(STUB_BLD)/%.o: $(STUB_SRC)/%.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC -c -o $@ $<
+
+$(STUB_BLD)/$(STUB_LIBA): $(STUB_OBJS:%=$(STUB_BLD)/%)
+	rm -f $@ && ar rc $@ $^ && ranlib $@
+
+$(STUB_BLD)/$(STUB_LIBSO): $(STUB_OBJS:%=$(STUB_BLD)/%)
+	$(CXX) $(LDFLAGS) -shared -lfactory -o $@ $^
+
+# --------------------------------------------------------------------
 # Used for development and testing
 
-dev : stubs
+.PHONY: Test_Util Test_Type Test_Expr Test_Norm Test_Cpa Test_Parser Test_Web
+
+dev: stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) Game.cma
 
-dev_server : wsautognp.native
+dev_server: wsautognp.native
 	-@ killall wsautognp.native
 
-%.deps :
+%.deps:
 	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
             -package comparelib.syntax \
             -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
@@ -78,7 +102,7 @@ dev_server : wsautognp.native
 	ocamldot .depend > deps.dot
 	dot -Tsvg deps.dot >deps.svg
 
-depgraph :
+depgraph:
 	ocamlfind ocamldep -package bolt -package batteries -syntax camlp4o \
             -package comparelib.syntax \
             -I src/CAS -I src/Expr -I src/Extract -I src/Game -I src/Deduce -I src/Main \
@@ -90,12 +114,12 @@ depgraph :
 	dot -Tsvg deps.dot >deps.svg
 
 
-autognp.native-dev : stubs
+autognp.native-dev: stubs
 	ocamlbuild $(LIBFLAGS) $(OCAMLBUILDFLAGS) autognp.native
 	rm autognp.log
 	BOLT_CONFIG=log_bolt.config ./autognp.native test.zc ; cat autognp.log
 
-wsautognp.native-dev : wsautognp.native
+wsautognp.native-dev: wsautognp.native
 	-@killall wsautognp.native
 
 test-examples: autognp.native
@@ -107,19 +131,19 @@ test-examples-ec: autognp.native
 test-tests-ec: autognp.native
 	bash scripts/run_tests_ec.sh
 
-Test_Type :
+Test_Type:
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Type.d.byte && ./Test_Type.d.byte
 
-Test_Expr :
+Test_Expr:
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Expr.d.byte && ./Test_Expr.d.byte
 
-Test_Singular :
+Test_Singular:
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Singular.d.byte && ./Test_Singular.d.byte
 
-Test_Pretty_Expr :
+Test_Pretty_Expr:
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Pretty_Expr.d.byte && ./Test_Pretty_Expr.d.byte
 
-Test_Solve_Fq :
+Test_Solve_Fq:
 	ocamlbuild $(OCAMLBUILDFLAGS) Test_Solve_Fq.d.byte && ./Test_Solve_Fq.d.byte
 
 %.inferred.mli:

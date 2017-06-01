@@ -1,5 +1,5 @@
-autognp.native
-wsautognp.native
+*.native
+*.byte
 zoocrypt.log
 /.depend
 /deps.dot
@@ -7,6 +7,6 @@ zoocrypt.log
 /scripts/dot_of_depend.py
 *.bak
 *.swp
-_build/*
+_build/
 proofgeneral/_local/*
 extraction/*.ec
