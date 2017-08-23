@@ -257,6 +257,7 @@ and solve_mult seen ecs e1 e2 =
     else to_try in
 
     try_all seen ecs to_try
+    | _ -> None
 
 and solve_trans seen ecs e1 =
     match (solve_mat' seen ecs e1) with
