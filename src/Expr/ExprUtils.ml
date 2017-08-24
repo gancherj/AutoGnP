@@ -270,9 +270,9 @@ and pp_op_p ~qual above fmt (op, es) =
   in
   match op, es with
   | MatSplitLeft,   [a]   ->
-    pp_prefix MatSplitLeft  "sl "     ""    a
+    pp_prefix MatSplitLeft  "sl ("     ")"    a
   | MatSplitRight,   [a]   ->
-    pp_prefix MatSplitRight  "sr "     ""    a
+    pp_prefix MatSplitRight  "sr ("     ")"    a
   | MatConcat, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatConcat,0)) MatConcat "@ || " a b
   | MatMinus, [a;b] ->
@@ -280,9 +280,9 @@ and pp_op_p ~qual above fmt (op, es) =
   | MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | MatOpp,   [a]   ->
-    pp_prefix MatOpp  "-"     ""    a
+    pp_prefix MatOpp  "-("     ")"    a
   | MatTrans,   [a]   ->
-    pp_prefix MatTrans  "tr "     ""    a
+    pp_prefix MatTrans  "tr ("     ")"    a
   | GExp _,   [a;b] ->
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)
             && above<>Infix(Eq,0) && above<>Infix(Eq,1))
