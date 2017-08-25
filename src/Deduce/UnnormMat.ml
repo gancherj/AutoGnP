@@ -28,6 +28,12 @@ let unary_app_extract op e = match e.e_node with | App(op', [e']) when op'=op ->
 
 let plus_unary_extract op es =  mk_MatPlus (List.map (unary_app_extract op) es)
 
+let is_mult_with_l a e = match e.e_node with | App(MatMult, [e1; e2]) when a=e1 -> true | _ -> false
+let is_mult_with_r b e = match e.e_node with | App(MatMult, [e1; e2]) when b=e2 -> true | _ -> false
+
+let extract_mult_l e = match e.e_node with | App(MatMult, [e1;e2]) -> e1 | _ -> assert false
+let extract_mult_r e = match e.e_node with | App(MatMult, [e1;e2]) -> e2 | _ -> assert false
+
 (* sum of F = F of sum for trans, opp, splits *)
 let plus_unary_fold es =
             if (List.for_all (is_app MatTrans) es) then
@@ -88,6 +94,18 @@ let split_mult_pullin to_add a b = match a.e_node, b.e_node with
     | _ -> ()
 
 
+let distr_mult_expand_l to_add a b = match a.e_node, b.e_node with
+    | (Nary(MatPlus, es), _) ->
+            let mults = List.map (fun e -> mk_MatMult e b) es in
+            to_add := mk_MatPlus mults :: !to_add
+    | _ -> ()
+
+let distr_mult_expand_r to_add a b = match a.e_node, b.e_node with
+    | (_, Nary(MatPlus, es)) ->
+            let mults = List.map (fun e -> mk_MatMult a e) es in
+            to_add := mk_MatPlus mults :: !to_add
+    | _ -> ()
+
 
 (* unnorm expands e for one step, returning a list of new possibilities. *)
 let rec unnorm (e : expr) : expr list =
@@ -117,6 +135,8 @@ and unnorm_mult (a : expr) (b : expr) : expr list =
     trans_mult_exp1 to_add a b;
     trans_mult_exp2 to_add a b;
     split_mult_pullin to_add a b;
+    distr_mult_expand_l to_add a b;
+    distr_mult_expand_r to_add a b;
     !to_add
 
 and unnorm_plus_multi to_add (es : expr list) = 
@@ -132,12 +152,33 @@ and unnorm_plus_multi to_add (es : expr list) =
     else
         ()
 
+(* a*b + a * c -> a * (b + c) *)
+and unnorm_plus_distr_l to_add (es : expr list) = match (List.hd es).e_node with
+    | App(MatMult, [e1; e2]) ->
+            if List.for_all (is_mult_with_l e1) es then
+                let rights = List.map extract_mult_r es in
+                to_add := mk_MatMult e1 (mk_MatPlus rights) :: !to_add
+            else ()
+    | _ -> ()
+
+(* a * b + c * b -> (a + c) * b *)
+and unnorm_plus_distr_r to_add (es : expr list) = match (List.hd es).e_node with
+    | App(MatMult, [e1; e2]) ->
+            if List.for_all (is_mult_with_r e2) es then
+                let lefts = List.map extract_mult_l es in
+                to_add := mk_MatMult (mk_MatPlus lefts) e2 :: !to_add
+            else ()
+    | _ -> ()
+
+
 and unnorm_plus (es : expr list) : expr list =
     let to_add = ref [mk_MatPlus es] in
     (match plus_unary_fold es with
     | Some i -> to_add := i :: !to_add;
     | _ -> ());
     unnorm_plus_multi to_add es;
+    unnorm_plus_distr_l to_add es;
+    unnorm_plus_distr_r to_add es;
     !to_add
 
 

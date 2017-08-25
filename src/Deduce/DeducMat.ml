@@ -78,8 +78,6 @@ let rec try_all etbl es =
 and solve_adds etbl adds = match adds with
     | [] -> None
     | (e1, e2) :: adds' ->
-            log_i (lazy (fsprintf "solve adds with %a, %a \n" pp_expr e1 pp_expr
-            e2));
             match (solve etbl e1, solve etbl e2) with
             | (Some i1, Some i2) -> (Some (i_bop matplus_bop i1 i2))
             | _ -> solve_adds etbl adds'
