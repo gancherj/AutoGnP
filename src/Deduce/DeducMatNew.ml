@@ -35,6 +35,7 @@ let ei_bop op ei1 ei2 = let (e1, i1) = ei1 in
 let i_bop op i1 i2 = I (op (expr_of_inverter i1) (expr_of_inverter i2))
 let i_mkapp o is ty = I (mk_App o (List.map expr_of_inverter is) ty) 
 
+
 let matplus_bop e1 e2 = mk_MatPlus [e1;e2]
 
 let rec superset es = match es with
@@ -86,18 +87,16 @@ and solve_adds etbl adds = match adds with
 
 and solve etbl e =
     match e.e_node with
-    | Nary(_, es') -> (* plus; decompose *)
+    | Nary(MatPlus, es') -> (* plus; decompose *)
             (match solve_adds etbl (all_adds es') with
             | Some i -> Some i
             | None -> try_find etbl e)
             
     | App(op, es') ->
-            (match try_find etbl e with
-            | Some i -> Some i
-            | None ->
-                    (match try_all etbl es' with
-                    | Some is -> Some (i_mkapp op is e.e_ty)
-                    | None -> None))
+            (match try_all etbl es' with
+            | Some is -> Some (i_mkapp op is e.e_ty)
+            | None -> try_find etbl e)
+
     | _ -> try_find etbl e
 
 let rec try_solve_any etbl es = match es with
@@ -106,10 +105,18 @@ let rec try_solve_any etbl es = match es with
         | Some i -> Some i
         | None -> try_solve_any etbl es'
 
+let i_unnorm depth ei =
+    let es = UnnormMat.expand (fst ei) depth in
+    List.map (fun e -> (e, (snd ei))) es
+
+let ecs_expand_unnorm ecs depth =
+    List.flatten (List.map (i_unnorm depth) ecs)
+
 let solve_mat ecs e =
-    let etbl = He.create (List.length ecs) in
-    List.iter (fun (e,i) -> He.add etbl e i) ecs;
-    let es = UnnormMat.expand e 10 in
+    let ecs' = ecs_expand_unnorm ecs 5 in
+    let etbl = He.create (List.length ecs') in
+    List.iter (fun (e,i) -> He.add etbl e i) ecs';
+    let es = UnnormMat.expand e 5 in
     match try_solve_any etbl es with
     | Some i -> i
     | None -> 

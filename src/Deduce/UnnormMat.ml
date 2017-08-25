@@ -133,7 +133,7 @@ and unnorm_plus_multi to_add (es : expr list) =
         ()
 
 and unnorm_plus (es : expr list) : expr list =
-    let to_add = ref [] in
+    let to_add = ref [mk_MatPlus es] in
     (match plus_unary_fold es with
     | Some i -> to_add := i :: !to_add;
     | _ -> ());
