@@ -245,7 +245,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | BS _ | Bool  -> DeducXor.solve_xor, equal_ty ty
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
-      | Mat _        -> DeducMatNew.solve_mat, fun t -> is_Mat t 
+      | Mat _        -> DeducMat.solve_mat, fun t -> is_Mat t 
       | TySym _ | Prod _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in
