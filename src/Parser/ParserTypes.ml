@@ -106,8 +106,8 @@ type ranges = range_pos list
 type parse_ev = parse_expr
 
 type tactic =
-  | Rmatunfold     of bool option * int 
-  | Rmatfold       of bool option * int * int 
+  | Rmatunfold     of bool option * int * (string * string) option
+  | Rmatfold       of bool option * int * int * string option
   | Rnorm of bool
   | Rdist_eq
   | Rdist_sym

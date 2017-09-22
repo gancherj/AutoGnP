@@ -49,9 +49,9 @@ val ct_conv : bool -> sec_exp -> core_tactic
 
 (* Matrix fold/unfold sampling *)
 
-val ct_matfold : bool -> int -> int -> core_tactic
+val ct_matfold : string option -> bool -> int -> int -> core_tactic
 
-val ct_matunfold : bool -> int -> core_tactic
+val ct_matunfold : (string * string) option -> bool -> int -> core_tactic
 
 (** [rtans new_se] an be used to replace the current security
     experiment [se] with [new_se] after proving that [se] and

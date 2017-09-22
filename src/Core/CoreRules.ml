@@ -234,7 +234,7 @@ else
     | Mat(a,b), Mat(c,d) -> mk_Mat (MDPlus(a,c)) d
     | _,_ -> assert false
 
-let r_matfold wh i j ju = 
+let r_matfold (m : string option) wh i j ju  = 
     if i >= j then tacerror "first must be earlier";
     let se = ju.ju_se in
     match (get_se_ctxt se i), (get_se_ctxt se j) with
@@ -243,7 +243,10 @@ let r_matfold wh i j ju =
       allowed";
       let _ = ensure_ty_fold wh ty1 ty2 in
       let ab_ty = ty_fold wh ty1 ty2 in
-      let sab = VarSym.mk (mk_name ~name:"AB" se) ab_ty in
+      let sab = 
+          VarSym.mk (mk_name 
+          ~name:(match m with | Some (n) -> n | None -> "AB") se)
+          ab_ty in
       let ab = mk_V sab in
       let subst e = if wh then 
           let e1 = e_replace (mk_V a) (mk_MatSplitLeft ab) e in
@@ -263,9 +266,9 @@ let r_matfold wh i j ju =
     | _,_ -> tacerror "not good samp"
 
 
-let ct_matfold wh i j = prove_by (r_matfold wh i j)
+let ct_matfold m wh i j  = prove_by (r_matfold m wh i j)
 
-let r_matunfold wh i ju = 
+let r_matunfold (p : (string * string) option) wh i ju  = 
     let se = ju.ju_se in
     match get_se_ctxt se i with
     | GSamp(ab, (ty, exc)), sec ->
@@ -273,8 +276,10 @@ let r_matunfold wh i ju =
       let _ = ensure_ty_unfold wh ty in (*if wh then ab is
       Matrix_{z,x+y}; if not wh then ab is Matrix_{x+y,z} *)
       let (a_ty, b_ty) = split_ty_unfold wh ty in
-      let sa = VarSym.mk (mk_name ~name:"A" se) a_ty in
-      let sb = VarSym.mk (mk_name ~name:"B" se) b_ty in
+      let (sa_n, sb_n) = 
+          (match p with | Some (n1, n2) -> (n1, n2) | None -> ("A", "B")) in
+      let sa = VarSym.mk (mk_name ~name:sa_n se) a_ty in
+      let sb = VarSym.mk (mk_name ~name:sb_n se) b_ty in
       let a = mk_V sa in
       let b = mk_V sb in
       let subst = if wh then fun e -> e_replace (mk_V ab) (mk_MatConcat a b) e
@@ -286,7 +291,7 @@ let r_matunfold wh i ju =
     | _ -> tacerror "not good samp" 
       
 
-let ct_matunfold wh i = prove_by (r_matunfold wh i)
+let ct_matunfold p wh i = prove_by (r_matunfold p wh i)
 
 (* *** Instruction movement.
  * ----------------------------------------------------------------------- *)
