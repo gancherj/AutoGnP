@@ -1,8 +1,6 @@
 
 operator Chi : BS_chir -> Matrix_{m+1,1}.
 
-operator Chim : BS_chir -> Matrix_{m,1}.
-operator Chi1 : BS_chir -> Matrix_{1,1}.
 
 adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
 assumption LWE
@@ -29,13 +27,6 @@ assumption LHL
     (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));]
 [ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; chir <-$ BS_chir; B <-$ Matrix_{n,m}; b <- Adv_LHL(tgr, chir,  TrapGen(tgr)#0,B, (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));].
 
-(*assumption LHL (i : Matrix_{1,m})
-[
-  tgr <-$ BS_tgr; rinjr <-$ BS_rinjr;
-  b <- Adv_LHL(tgr, TrapGen(tgr)#0, TrapGen(tgr)#0 * Rinj(rinjr),
-    tr R * i);
-] [
-].*)
 
 operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator SampleRight : 
@@ -85,7 +76,7 @@ bound_adv [
   let Hid' = IdHash(i');
     s <-$ Matrix_{n,1};
     rinjr <-$ BS_rinjr; let R = Rinj(rinjr);
-    chir <-$ BS_chir; (*let X = tr ((tr Chim(chir)) || (tr Chi1(chir)));*)
+    chir <-$ BS_chir; 
   let X = Chi(chir);
 
   let e0 = tr sl tr X; let e1 = tr sr tr X;
@@ -118,7 +109,6 @@ bound_adv [
   
   trans* [subst 16 (a1t -> A * R)].
     LR: norm.
-  enable_debug. 
   R: assumption_decisional! LHL -> z.
   LR:norm.
   assumption_decisional! dkill_nm <- z; //.
@@ -162,44 +152,12 @@ bound_adv [
  move AB 1.
  move s 2.
  move chir 3. //=.
- norm. (* need to factor (a || ab) as a * (1 || b) *)
-abstract 9 e1 (sl tr Chi(chir)).
-abstract 9 A (sl AB).
-abstract 9 u (sr AB).
-abstract 9 R (Rinj(rinjr)).
-abstract 9 e2 (sr tr Chi(chir)).
-subst ((e1 * R) + (tr s * A * R) -> (e1 + tr s * A) * R).
-subst ((e1 + (tr s * A)) || ((e1 + tr s * A) * R) ->
-  (e1 + tr s * A) * (I_{m,m} || R)).
-abstract 14 v1 (e1 + tr s * A).
-abstract 14 v2 (e2 + tr s * u).
-
-abstract 9 arg (AB, s, chir).
-
-
-assumption_decisional! LWE -> .
-
-abstract 14 c (I_{m,m} || R).
-abstract 14 d (tr s * A).
-subst (e1 * c + d * c -> (e1 + d) * c).
-subst ((e1 * (I_{m,m} || R))
-  + (tr s * A * (I_{m,m} || R)) ->
-  (e1 + (tr s * A)) * (I_{m,m} || R)).
-
-
-subst (tr s * sr AB -> sr (tr s * AB)).
-subst (tr s * sl AB -> sl (tr s * AB)).
-abstract 10 arg (AB, s, chir).
-
-
-
-assumption_decisional! LWE ->  [arg] .
-norm.
-
-rnd r__ (x -> tr x) (x -> tr x); //.
-mat_unfold 2; //.
-move 3 8.
-rnd B (x -> x - Minj(b)) (x -> x + Minj(b)).
-norm.
-  indep!.
+ (* need to factor (a || ab) as a * (1 || b) *)
+ assumption_decisional! LWE -> .
+ rnd r__ (x -> tr x) (x -> tr x); //.
+ mat_unfold 2; //.
+ move 8 2.
+ rnd B (x -> x - Minj(b)) (x -> x + Minj(b)).
+ norm.
+ indep!.
 qed.

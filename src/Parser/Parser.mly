@@ -468,6 +468,9 @@ id_pair:
 | id = ID { (id,None) }
 | LPAR id1=ID id2=ID RPAR { (id1,Some id2) }
 
+strict_id_pair:
+| id1=ID id2=ID { (id1, id2) }
+
 maybe_upto:
 | COLON ap=assgn_pos { ap }
 
@@ -509,8 +512,8 @@ tactic :
     i1=ID e1=expr mup=maybe_upto?              { Rlet_abs_ded(excl<>None,i,i1,e1,mup) }
 | ASSERT i=assgn_pos e=expr?                   { Rassert(i,e) }
 
-| RMATUNFOLD i=gpos                            { Rmatunfold(None,i) }
-| RMATFOLD i=gpos j=gpos                       { Rmatfold(None,i,j) }
+| RMATUNFOLD i=gpos p=option(strict_id_pair)   { Rmatunfold(None,i, p) }
+| RMATFOLD i=gpos j=gpos m=option(ID)          { Rmatfold(None,i,j, m) }
 
 /* moving lines */
 | RMOVE i=move_pos j=assgn_pos                 { Rmove(i,j) }
