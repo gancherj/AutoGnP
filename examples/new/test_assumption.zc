@@ -1,0 +1,19 @@
+(* A crazy assumption to test *)
+
+adversary A1_ddh : G -> G.
+adversary A2_ddh : (G * G * G) -> Bool.
+
+assumption ddh ([x,y])
+  [ w <-$ Fq; g1 <- A1_ddh(g^w); x,y   <-$ Fq; b <- A2_ddh(g1^x,g1^y,g1^(x*y)); ]
+  [ w <-$ Fq; g1 <- A1_ddh(g^w); x,y,z <-$ Fq; b <- A2_ddh(g1^x,g1^y,g1^z);     ].
+
+adversary A1_log : G -> G.
+adversary A2_log : G -> Fq.
+
+
+assumption comp_log succ
+  [ w <-$ Fq; g1 <- A1_log(g^w); x <-$ Fq; x' <- A2_log(g1^x); ] : (x = x').
+  
+  
+
+   
