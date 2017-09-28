@@ -29,7 +29,7 @@ let log_d = mk_log Bolt.Level.DEBUG
  * ----------------------------------------------------------------------- *)
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
-  let rn = "asumption_decisional" in
+  let rn = "assumption_decisional" in
   let fail_opt mo s = fail_opt mo (rn^": "^s) in
   let se = ju.ju_se in
   let dir = fail_opt mdir "requires direction" in
@@ -77,7 +77,9 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
         let nvres = L.length vres in
         let vres_ju =
           L.take nvres (L.drop (j + 1 - nvres) se.se_gdef)
-          |> L.map (function GLet (x,_) -> x | _ -> assert false)
+          |> L.map (function GLet (x,_) -> x | c -> 
+             Format.eprintf "error on %a@." (Game.pp_gcmd ~nonum:false) c;
+             assert false)
         in
         if L.length vres <> L.length vres_ju then
           tacerror "%s: return type does not match" rn;
