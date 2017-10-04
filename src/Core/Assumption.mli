@@ -11,15 +11,25 @@ open Game
 (* ** Decisional assumptions
  * ----------------------------------------------------------------------- *)
 
-type assm_dec = private {
-  ad_name       : string;       (*r name of assumption *)
-  ad_inf        : bool;         (*r information-theoretic assumption *)
-  ad_prefix1    : gdef;         (*r prefix for left *)
-  ad_prefix2    : gdef;         (*r prefix for right *)
-  ad_acalls     : (AdvSym.t * VarSym.t list * (expr * expr)) list;
-                                (*r adversary calls (same asym) and
-                                    arguments/returned variables on left and right *)
-  ad_symvars    : vs list list; (*r symmetric in given variables *)
+type assm_dec_orcls = 
+  OrclSym.t * VarSym.t list * (obody * obody) * counter
+
+(* adversary calls, same asym and returned variables,  
+   argument and oracle on left and right      *)
+type assm_dec_adv_call = {
+   ad_ac_sym   : AdvSym.t;
+   ad_ac_lv    : VarSym.t list;
+   ad_ac_args  : expr * expr;
+   ad_ac_orcls : assm_dec_orcls list;
+  }
+    
+type assm_dec = {
+  ad_name       : string;       (* name of assumption *)
+  ad_inf        : bool;         (* information-theoretic assumption *)
+  ad_prefix1    : gdef;         (* prefix for left *)
+  ad_prefix2    : gdef;         (* prefix for right *)
+  ad_acalls     : assm_dec_adv_call list;
+  ad_symvars    : vs list list; (* symmetric in given variables *)
 }
 
 val pp_assm_dec :  F.formatter -> assm_dec -> unit

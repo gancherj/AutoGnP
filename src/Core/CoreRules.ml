@@ -143,6 +143,28 @@ let ensure_ppt rn gdef =
   if not (is_ppt_gcmds gdef) then
     tacerror "%s: %a is not ppt" rn (pp_gdef ~nonum:false) gdef
 
+let ensure_not_use_le rn used_vars forbidden_vars ldef lres =
+  if not (se_disjoint used_vars forbidden_vars) then
+    tacerror "%s: judgment uses private variables: %a in @\n@[<hv 2>%a@]" rn
+      (pp_list "," pp_expr) (Se.elements (Se.inter used_vars forbidden_vars))
+      (pp_lcomp ~nonum:false ~qual:Unqual) (lres, ldef)
+
+let ensure_ppt_le rn ldef lres =
+  if not (is_ppt_lcmds ldef && is_ppt lres) then
+    tacerror "%s: %a is not ppt" rn (pp_lcomp ~nonum:false ~qual:Unqual) 
+             (lres,ldef)
+
+let ensure_not_use_l rn used_vars forbidden_vars ldef =
+  if not (se_disjoint used_vars forbidden_vars) then
+    tacerror "%s: judgment uses private variables: %a in @\n@[<v>%a@]" rn
+      (pp_list "," pp_expr) (Se.elements (Se.inter used_vars forbidden_vars))
+      (pp_list "@ " (pp_lcmd ~qual:Unqual)) ldef
+
+let ensure_ppt_l rn ldef  =
+  if not (is_ppt_lcmds ldef) then
+    tacerror "%s: @[<v>%a@] is not ppt" rn 
+       (pp_list "@ " (pp_lcmd ~qual:Unqual)) ldef
+
 let ensure_pr_Adv rn ju =
   if ju.ju_pr <> Pr_Adv then
     tacerror "%s: Adv judgment expected" rn
@@ -227,11 +249,11 @@ else
 
 let ty_fold wh ty1 ty2 = if wh then
     match ty1.ty_node, ty2.ty_node with
-    | Mat(a,b), Mat(c,d) -> mk_Mat a (MDPlus(b,d))
+    | Mat(a,b), Mat(_c,d) -> mk_Mat a (MDPlus(b,d))
     | _,_ -> assert false
 else
     match ty1.ty_node, ty2.ty_node with
-    | Mat(a,b), Mat(c,d) -> mk_Mat (MDPlus(a,c)) d
+    | Mat(a,_b), Mat(c,d) -> mk_Mat (MDPlus(a,c)) d
     | _,_ -> assert false
 
 let r_matfold (m : string option) wh i j ju  = 
@@ -987,16 +1009,213 @@ let ct_assm_comp assm ev_e subst = prove_by (r_assm_comp assm ev_e subst)
 (* *** Apply decisional assumption
  * ----------------------------------------------------------------------- *)
 
-let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
+let gcmd_of_lcmd rn lcmd = 
+  match lcmd with
+  | LLet(x,e) -> GLet(x,e)
+  | LMSet(h,e1,e2) -> GMSet(h,e1,e2)
+  | LSamp(x,d) -> GSamp(x,d)
+  | LBind  _ | LGuard _ ->
+    tacerror "%s: cannot transalate oracle into main" rn
+  
+let gcmd_of_lcmds rn = L.map (gcmd_of_lcmd rn)
+
+let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
   let swap_dir = if dir = LeftToRight then id else Util.swap in
   let (pref,_) = swap_dir (assm.ad_prefix1,assm.ad_prefix2) in
   let pref_len = L.length pref in
   let priv_vars = private_vars_dec assm in
-  let rec go rngs acalls acalls_new =
+
+  let count_sym = OrclSym.H.create 10 in
+  let check_counter o c counter = 
+    match c, counter with
+    | Once, Once -> 
+      if OrclSym.H.mem count_sym o then
+        tacerror "%s: to many call to oracle %a" rn OrclSym.pp o;
+          OrclSym.H.add count_sym o ()
+    | _, Once ->
+      tacerror "%s: to many call to oracle %a" rn OrclSym.pp o
+    | _, _ -> () in
+
+  let init_subst x vs b1 b2 = 
+    
+    let ex = mk_V x in
+        let s = 
+          match vs with
+          | []  -> Me.empty
+          | [y] -> Me.add (mk_V y) ex Me.empty
+          | vs  ->
+            L.fold_lefti (fun s i y ->
+                let ey = mk_V y and ep = mk_Proj i ex in
+                Me.add ey ep s) Me.empty vs in
+        let subst_e = e_subst s in
+        map_obody_exp subst_e b1, map_obody_exp subst_e b2 in
+
+  let check_main_body priv_vars vs body b1 b2 = 
+        let x,e, body1 = 
+          match body with
+          | GLet(x,e):: body1 -> x,e, body1
+          | _ -> tacerror "%s: invalid first instruction in oracle main body" rn
+        in
+        (* substitution of vs by the projection of x *)
+        let (lc1,res1), (lc2,res2) = init_subst x vs b1 b2 in 
+        (* Check that body is of the following form:
+           let x = e in
+           lc1;
+           let z = res1 in 
+        *)
+        let gc1 = gcmd_of_lcmds rn lc1 in
+        let hdb = L.take (L.length gc1) body1 in
+        if not (equal_gdef gc1 hdb) then
+          tacerror "%s: cannot reconize oracle body in main" rn;
+        let z = 
+          match L.drop (L.length gc1) body1 with
+          | [GLet(z, e)] when equal_expr res1 e -> z
+          | _ -> tacerror "%s: cannot reconize oracle res in main" rn
+        in
+        let i = GLet(x,e) in
+        let read = read_gcmd i in
+        ensure_not_use rn read priv_vars [i];
+        ensure_ppt rn [i];
+        let priv_vars = Se.union (write_gcmds (i::gc1)) priv_vars in
+        priv_vars, i :: (gcmd_of_lcmds rn lc2) @ [GLet(z,res2)] in
+
+  let find_orcl ad_ac o = 
+     try
+       List.find (fun (o',_,_,_) -> OrclSym.equal o o') ad_ac.ad_ac_orcls
+     with Not_found ->
+       tacerror "%s: unknown oracle %a" rn OrclSym.pp o in
+
+  let check_orcl_bodies ad_ac priv_vars info os = 
+    let check_obody (oc,ores) rgns ocount = 
+      let rec aux priv_vars len body rngs = 
+        match rngs with
+        | [] -> 
+          let read = Se.union (read_lcmds body) (e_vars ores) in
+          ensure_not_use_le rn read priv_vars body ores;
+          ensure_ppt_le rn body ores;
+          priv_vars, body
+        | (i, j, o) :: rngs ->
+          let (_, vs, obody, counter) = find_orcl ad_ac o in
+          check_counter o ocount counter;
+          let b1, b2 =  swap_dir obody in
+          if i < len || j < i then
+            tacerror "%s: bad oracle range %a" rn OrclSym.pp o;
+          let (i, j) = i - len, j - len in
+          let pre_body =  L.take i body in
+          let body1 = L.take (j - i + 1) (L.drop i body) in
+          let x,e,body1 = 
+            match body1 with
+            | LLet(x,e):: body1 -> x,e, body1
+            | _ -> 
+              tacerror "%s: invalid first instruction in oracle body" rn
+          in
+          let post_body = L.drop (j+1) body in
+
+          let read = read_lcmds pre_body in
+          ensure_not_use_l rn read priv_vars pre_body;
+          ensure_ppt_l rn pre_body;
+          (* Check that body can be see as an instance of oracle call *)
+          
+          let (lc1,res1), (lc2,res2) = init_subst x vs b1 b2 in 
+          let hdb = L.take (L.length lc1) body1 in
+          if not (equal_lcmds lc1 hdb) then
+            tacerror "%s: cannot reconize oracle body" rn;
+          let z = 
+            match L.drop (L.length lc1) body1 with
+            | [LLet(z, e)] when equal_expr res1 e -> z
+            | _ -> tacerror "%s: cannot reconize oracle res in main" rn
+          in
+          let i = LLet(x,e) in
+          let read = read_lcmd i in
+          ensure_not_use_l rn read priv_vars [i];
+          ensure_ppt_l rn [i];
+          let priv_vars = Se.union (write_lcmds hdb) priv_vars in
+          let body2 = i :: lc2 @ [LLet(z,res2)] in
+          let priv_vars, post_body2 = 
+            aux priv_vars (len + j + 1) post_body rngs in
+          priv_vars, pre_body @ body2 @ post_body2 in
+      let _, oc2 = aux priv_vars 0 oc rgns in
+      (oc2, ores) in
+
+    let check_odecl i (o,vs,od,ocount) = 
+      let od = 
+        match od with
+        | Oreg obody ->
+          Oreg (check_obody obody (info i Onothyb) ocount)
+        | Ohyb ohybrid ->
+          Ohyb {
+              oh_less = 
+                check_obody ohybrid.oh_less (info i (Oishyb OHless)) ocount;
+              oh_eq = 
+                check_obody ohybrid.oh_eq (info i (Oishyb OHeq)) Once;
+              oh_greater =
+                check_obody ohybrid.oh_greater (info i (Oishyb OHgreater)) ocount; }
+      in
+      (o,vs,od,ocount) in
+    List.mapi check_odecl os in
+ 
+  let rec do_orcl ad_ac priv_vars len body rng_os = 
+    match rng_os with
+    | [] -> 
+      let read = read_gcmds body in
+      ensure_not_use rn read priv_vars body;
+      ensure_ppt rn body;
+       priv_vars, body
+
+    | RO_rng (i, j, o) :: rng_os ->
+      let (_, vs, obody, counter) = 
+        try
+          List.find (fun (o',_,_,_) -> OrclSym.equal o o') ad_ac.ad_ac_orcls
+        with Not_found ->
+              tacerror "%s: unknown oracle %a" rn OrclSym.pp o in
+      check_counter o Once counter;
+      let b1, b2 =  swap_dir obody in
+      if i < len || j < i then
+        tacerror "%s: bad oracle range %a" rn OrclSym.pp o;
+      let (i, j) = i - len, j - len in
+      let pre_body =  L.take i body in
+      
+      let read = read_gcmds pre_body in
+      ensure_not_use rn read priv_vars pre_body;
+      ensure_ppt rn (pre_body);
+      
+      let body = L.take (j - i + 1) (L.drop i body) in
+      let post_body = L.drop (j+1) body in
+      let priv_vars, body2 = check_main_body priv_vars vs body b1 b2 in
+      let priv_vars, post_body2 = 
+        do_orcl ad_ac priv_vars (len + j + 1) post_body rng_os in
+      priv_vars, pre_body @ body2 @ post_body2
+    | RO_orcl (i, info) :: rng_os ->
+      if i < len then
+        tacerror "%s: bad oracle range" rn;
+      let i = i - len in
+      let pre_body = L.take i body in
+      let (xs,a,e,os) = 
+        match L.hd (L.drop i body) with
+        | GCall(xs,a,e,os) -> (xs,a,e,os)
+        | _ -> 
+          tacerror "%s: range does not correspond to an adversary call" rn
+      in
+      let post_body = L.drop (i+1) body in
+      let os2 = check_orcl_bodies ad_ac priv_vars info os in  
+      let priv_vars, post_body2 = 
+        do_orcl ad_ac priv_vars (len + i + 1) post_body rng_os in
+      priv_vars, pre_body @ GCall(xs,a,e,os2) :: post_body2
+  in
+
+  let rec go len_all priv_vars rngs acalls acalls_new =
     match rngs, acalls with
-    | [], [] -> acalls_new
-    | (i,j)::rngs, (_,vres,(e1,e2))::acalls ->
+    | [], [] -> 
+      if len_all <> List.length acalls_ju then
+         tacerror "%s: size of range and adversary calls do not match up " rn;
+      acalls_new
+    | r::rngs, ad_ac::acalls ->
+      let vres = ad_ac.ad_ac_lv in
+      let (e1,e2) = ad_ac.ad_ac_args in
       let e_old,e_new = swap_dir (e1,e2) in
+      let i, j = r.r_start, r.r_end in
+      if i <> len_all then
+        tacerror "%s: invalid range instructions are skipped" rn;
       let len = j - i + 1 in
       let len_res = L.length vres in
       let len_body = len - 1 - len_res in
@@ -1004,10 +1223,14 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
       let c_arg  = L.hd acalls_ju in
       let c_body = L.take len_body (L.drop 1 acalls_ju) in
       let c_res  = L.take len_res  (L.drop (1 + len_body) acalls_ju) in
-      let read = read_gcmds (c_body@c_res) in
-      ensure_not_use rn read priv_vars (c_body@c_res);
-      ensure_ppt rn (c_body@c_res);
-      if not assm.ad_inf then ensure_ppt rn (c_body@c_res);
+          
+      (* Check that the body can be see as an adversary calling oracles *)
+     
+      let priv_vars, c_body2 = do_orcl ad_ac priv_vars (i + 1) c_body r.r_orcl in
+      let read = read_gcmds c_res in
+      ensure_not_use rn read priv_vars c_res;
+      ensure_ppt rn c_res;
+      (*if not assm.ad_inf then ensure_ppt rn (c_body@c_res);*)
       ensure_res_lets rn vres c_res;
       let v_arg =
         match c_arg with
@@ -1017,10 +1240,11 @@ let assm_dec_valid_ranges rn dir assm acalls_ju rngs =
             rn pp_expr e_old pp_expr e_arg
         | _ -> tacerror "%s: expected let in first line of range" rn
       in
-      go rngs acalls (acalls_new@[GLet(v_arg,e_new)]@c_body@c_res)
+      go (len_all + len) priv_vars rngs acalls
+         (acalls_new@[GLet(v_arg,e_new)]@c_body2@c_res)
     | _, _ -> tacerror "%s: ranges and adversary calls do not match up" rn
   in
-  go rngs assm.ad_acalls []
+  go 0 priv_vars rngs assm.ad_acalls []
 
 let r_assm_dec dir ren rngs assm0 ju =
   let rn = "assumption_decisional" in
@@ -1042,7 +1266,7 @@ let r_assm_dec dir ren rngs assm0 ju =
   in
   if not ev_is_last_returned then
     tacerror "assm_dec: event must be equal to variable defined in last line";
-  ensure_ranges_cover_gdef rn rngs (L.length pref_ju) se.se_gdef;
+(*  ensure_ranges_cover_gdef rn rngs (L.length pref_ju) se.se_gdef; *)
   (* check that we can instantiate calls in assumption with remainder of ju *)
   let acalls_ju_new = assm_dec_valid_ranges rn dir assm acalls_ju rngs in
   let se = { se with se_gdef = pref_new@acalls_ju_new } in

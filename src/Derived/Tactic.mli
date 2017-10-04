@@ -56,7 +56,7 @@ val t_matfold : bool -> int -> int -> string option -> tactic
 
 val t_matunfold : bool -> int -> (string * string) option -> tactic
 
-val t_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> tactic
+val t_assm_dec : direction -> renaming -> CoreTypes.rng list -> assm_dec -> tactic
 
 val t_assm_comp : assm_comp -> (int * int) list  -> renaming -> tactic
 

@@ -103,6 +103,9 @@ type range_pos = assgn_pos option * assgn_pos option
 type range = int * int
 type ranges = range_pos list
 
+
+(* type range_o =  *)
+  
 type parse_ev = parse_expr
 
 type tactic =
@@ -133,6 +136,8 @@ type tactic =
   | Rtrans_diff    of diff_cmd list
   | Rassm_dec      of bool * string option * direction option * ranges *
                       (string list) option
+  (*| Rassm_dec_o    of string * direction * (string * string list) * 
+                        ranges_o *)
   | Rassm_comp     of bool * string option * ranges
   | Rlet_abs       of assgn_pos option * string * parse_expr option *
                       assgn_pos option * bool

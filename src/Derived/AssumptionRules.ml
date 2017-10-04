@@ -73,7 +73,8 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   (* extend renaming with mappings for variables binding return values *)
   let ren =
     List.fold_left2
-      (fun ren  (_,j) (_asym,vres,_) ->
+      (fun ren  (_,j) ad_ac ->
+        let vres = ad_ac.ad_ac_lv in
         let nvres = L.length vres in
         let vres_ju =
           L.take nvres (L.drop (j + 1 - nvres) se.se_gdef)
@@ -88,12 +89,17 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
           ren vres vres_ju)
       ren rngs assm.ad_acalls
   in
+  let rngs = 
+    List.map (fun (r_start, r_end) -> {r_start; r_end; r_orcl = []}) rngs in
   let conv_common_prefix ju =
     let se = ju.ju_se in
     let a_rn = inst_dec ren assm in
     let pref = get_dir a_rn.ad_prefix1 a_rn.ad_prefix2 in
     let assm_terms =
-      L.map2 (fun (_,_,(e1,e2)) (i,_) -> (i,get_dir e1 e2)) a_rn.ad_acalls rngs
+      L.map2 (fun ad_ac rng -> 
+          let e1,e2 = ad_ac.ad_ac_args in
+          let i = rng.r_start in
+          (i,get_dir e1 e2)) a_rn.ad_acalls rngs
     in
     let grest =
       L.mapi
@@ -114,7 +120,7 @@ let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
 let t_assm_dec_aux ts assm dir subst assm_samps vnames ju =
   guard (L.length assm.ad_acalls = 1)  >>= fun _ ->
   let (arg_e) = match assm.ad_acalls with
-    | [ _, _, (ae_left, ae_right) ] ->
+    | [ {ad_ac_args = (ae_left, ae_right)} ] ->
       if dir=LeftToRight then ae_left else ae_right
     | _ -> assert false
   in

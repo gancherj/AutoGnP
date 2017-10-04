@@ -153,7 +153,7 @@ val ct_random_indep : core_tactic
 (** [rassm_dec dir vmap assm ju] returns the judgment resulting from
     applying the decisional assumption [assm] with the variable renaming
     [vmap] in direction [dir] to [ju]. *)
-val ct_assm_dec : direction -> renaming -> (int * int) list -> assm_dec -> core_tactic
+val ct_assm_dec : direction -> renaming -> rng list -> assm_dec -> core_tactic
 
 val ct_assm_comp : assm_comp -> (int * int) list  -> renaming -> core_tactic
 

@@ -62,6 +62,16 @@ let pp_ju fmt ju =
 
 type bad_version = UpToBad | CaseDist
 
+type rng_orcl = 
+  | RO_rng of int * int * OrclSym.t
+  | RO_orcl of int * (int -> otype  -> ((int * int * OrclSym.t) list))
+
+type rng = {
+  r_start : int;
+  r_end   : int;
+  r_orcl  : rng_orcl list;
+}
+
 type rule_name =
 
 (* *** Equivalence/small statistical distance: main *)
@@ -143,7 +153,7 @@ type rule_name =
 
 (* *** Apply assumption *)
 
-  | Rassm_dec  of (int * int) list * direction * renaming * assm_dec
+  | Rassm_dec  of rng list * direction * renaming * assm_dec
 
   | Rassm_comp of (int * int) list * renaming * assm_comp
 

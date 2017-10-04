@@ -365,6 +365,7 @@ val map_se_finmap :
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
 
+val pp_ocounter : F.formatter -> counter -> unit
 val pp_distr : qual:os qual -> F.formatter -> ty * expr list -> unit
 val pp_v : F.formatter -> VarSym.t -> unit
 val pp_binder : qual:os qual -> F.formatter -> vs list -> unit
