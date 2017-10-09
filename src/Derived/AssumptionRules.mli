@@ -3,6 +3,14 @@
 open Util
 open TheoryTypes
 
+val t_assm_dec_o : 
+  TheoryTypes.theory_state ->
+  string ->
+  Util.direction ->
+  ParserTypes.renaming list ->
+  ParserTypes.range_o list ->
+  Tactic.tactic
+
 val t_assm_dec :
   ?i_assms:Util.Sstring.t ->
   theory_state ->

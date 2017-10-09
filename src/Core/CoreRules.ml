@@ -121,7 +121,7 @@ let merge_proof_states pss validation =
 
 let ensure_gdef_eq rn a b =
   if not (equal_gdef a b) then
-    tacerror "%s: games not equal, @\n@[<hov 2>  %a@]@\nvs@\n@[<hov 2>  %a@]"
+    tacerror "@[<v>%s: games not equal,@ @[<v>%a@]@ @[<v>%a@]@]"
       rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
 let ensure_event_eq rn e1 e2 =
@@ -945,7 +945,9 @@ let ensure_res_lets rn vres cres =
     (fun vs c ->
       match c with
       | GLet(vs',_) when VarSym.equal vs' vs -> ()
-      | _ -> tacerror "%s: result binding not found for %a" rn VarSym.pp vs)
+      | _ -> 
+        Format.eprintf "%a@." (pp_gcmd ~nonum:true) c;
+        tacerror "%s: result binding not found for %a" rn VarSym.pp vs)
     vres cres
 
 let assm_comp_valid_ranges rn assm acalls_ju rngs =
@@ -1066,7 +1068,9 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
         let gc1 = gcmd_of_lcmds rn lc1 in
         let hdb = L.take (L.length gc1) body1 in
         if not (equal_gdef gc1 hdb) then
-          tacerror "%s: cannot reconize oracle body in main" rn;
+          tacerror "%s: cannot reconize oracle body in main %a %a" rn
+                   (pp_gdef ~nonum:true) gc1 
+                   (pp_gdef ~nonum:true) hdb;
         let z = 
           match L.drop (L.length gc1) body1 with
           | [GLet(z, e)] when equal_expr res1 e -> z
@@ -1119,7 +1123,10 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
           let (lc1,res1), (lc2,res2) = init_subst x vs b1 b2 in 
           let hdb = L.take (L.length lc1) body1 in
           if not (equal_lcmds lc1 hdb) then
-            tacerror "%s: cannot reconize oracle body" rn;
+            tacerror "%s: cannot reconize oracle body %a should be %a" rn
+              (pp_lcmds ~qual:Unqual) hdb
+              (pp_lcmds ~qual:Unqual) lc1;
+
           let z = 
             match L.drop (L.length lc1) body1 with
             | [LLet(z, e)] when equal_expr res1 e -> z
@@ -1160,7 +1167,8 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
       let read = read_gcmds body in
       ensure_not_use rn read priv_vars body;
       ensure_ppt rn body;
-       priv_vars, body
+      Format.eprintf "end body @[<v>%a@]@." (pp_gdef ~nonum:false) body;
+      priv_vars, body
 
     | RO_rng (i, j, o) :: rng_os ->
       let (_, vs, obody, counter) = 
@@ -1173,15 +1181,19 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
       if i < len || j < i then
         tacerror "%s: bad oracle range %a" rn OrclSym.pp o;
       let (i, j) = i - len, j - len in
+      Format.printf "%i %i@." i j;
+      Format.eprintf "body @[<v>%a@]@." (pp_gdef ~nonum:false) body;
       let pre_body =  L.take i body in
-      
+      Format.eprintf "pre body @[<v>%a@]@." (pp_gdef ~nonum:false) pre_body;
       let read = read_gcmds pre_body in
       ensure_not_use rn read priv_vars pre_body;
       ensure_ppt rn (pre_body);
       
-      let body = L.take (j - i + 1) (L.drop i body) in
+      let bodyo = L.take (j - i + 1) (L.drop i body) in
+      Format.eprintf "body @[<v>%a@]@." (pp_gdef ~nonum:false) body;
       let post_body = L.drop (j+1) body in
-      let priv_vars, body2 = check_main_body priv_vars vs body b1 b2 in
+      Format.eprintf "post_body @[<v>%a@]@." (pp_gdef ~nonum:false) post_body;
+      let priv_vars, body2 = check_main_body priv_vars vs bodyo b1 b2 in
       let priv_vars, post_body2 = 
         do_orcl ad_ac priv_vars (len + j + 1) post_body rng_os in
       priv_vars, pre_body @ body2 @ post_body2
@@ -1204,9 +1216,10 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
   in
 
   let rec go len_all priv_vars rngs acalls acalls_new =
+(*    Format.eprintf "len_all = %i    %i@." len_all (List.length acalls_ju); *)
     match rngs, acalls with
     | [], [] -> 
-      if len_all <> List.length acalls_ju then
+      if len_all <> (List.length acalls_ju + pref_len) then
          tacerror "%s: size of range and adversary calls do not match up " rn;
       acalls_new
     | r::rngs, ad_ac::acalls ->
@@ -1215,7 +1228,7 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
       let e_old,e_new = swap_dir (e1,e2) in
       let i, j = r.r_start, r.r_end in
       if i <> len_all then
-        tacerror "%s: invalid range instructions are skipped" rn;
+        tacerror "%s: invalid range instructions are skipped, (%i,%i) should start by %i" rn (i+1) (j+1) (len_all +1);
       let len = j - i + 1 in
       let len_res = L.length vres in
       let len_body = len - 1 - len_res in
@@ -1223,7 +1236,8 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
       let c_arg  = L.hd acalls_ju in
       let c_body = L.take len_body (L.drop 1 acalls_ju) in
       let c_res  = L.take len_res  (L.drop (1 + len_body) acalls_ju) in
-          
+      Format.eprintf "ADV : @[<v>%a@]@."
+                     (pp_gdef ~nonum:true) (c_arg::c_body @ c_res); 
       (* Check that the body can be see as an adversary calling oracles *)
      
       let priv_vars, c_body2 = do_orcl ad_ac priv_vars (i + 1) c_body r.r_orcl in
@@ -1238,13 +1252,14 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
         | GLet (_, e_arg) ->
           tacerror "%s: expected argument %a, got %a"
             rn pp_expr e_old pp_expr e_arg
-        | _ -> tacerror "%s: expected let in first line of range" rn
+        | _ -> tacerror "%s: expected let in first line of range %a" rn
+                        (pp_gcmd ~nonum:true) c_arg
       in
       go (len_all + len) priv_vars rngs acalls
          (acalls_new@[GLet(v_arg,e_new)]@c_body2@c_res)
     | _, _ -> tacerror "%s: ranges and adversary calls do not match up" rn
   in
-  go 0 priv_vars rngs assm.ad_acalls []
+  go pref_len priv_vars rngs assm.ad_acalls []
 
 let r_assm_dec dir ren rngs assm0 ju =
   let rn = "assumption_decisional" in
@@ -1259,14 +1274,13 @@ let r_assm_dec dir ren rngs assm0 ju =
   ensure_ren_inj rn ren;
   ensure_gdef_eq rn pref_ju pref_old;
   (* check that event is equal to last returned variable *)
-  let ev_is_last_returned =
-    match L.last acalls_ju with
-    | GLet(vs,_) when equal_expr se.se_ev (mk_V vs) -> true
-    | _                                             -> false
-  in
-  if not ev_is_last_returned then
-    tacerror "assm_dec: event must be equal to variable defined in last line";
-(*  ensure_ranges_cover_gdef rn rngs (L.length pref_ju) se.se_gdef; *)
+  begin match L.last acalls_ju with
+    | (GLet(vs,_) | GCall([vs], _, _, _)) when 
+          equal_expr se.se_ev (mk_V vs) -> ()
+    | _                                             -> 
+       tacerror "assm_dec: event %a must be equal to variable defined in last line" pp_expr se.se_ev
+  end; 
+  (* ensure_ranges_cover_gdef rn rngs (L.length pref_ju) se.se_gdef; *)
   (* check that we can instantiate calls in assumption with remainder of ju *)
   let acalls_ju_new = assm_dec_valid_ranges rn dir assm acalls_ju rngs in
   let se = { se with se_gdef = pref_new@acalls_ju_new } in

@@ -142,6 +142,15 @@ let iter_ctx_se_exp ?iexc:(iexc=false) f se =
 
 type vmap = (string qual * string,VarSym.t) Hashtbl.t
 
+let create_vmap sv = 
+  let addv mvar v = 
+    let q = map_qual OrclSym.to_string v.VarSym.qual in
+    let x = Id.name v.VarSym.id in
+    Hashtbl.add mvar (q,x) v in
+  let avars = Hashtbl.create 10 in
+  VarSym.S.iter (addv avars) sv;
+  avars
+
 (** Given two variable maps [vm_1] and [vm_2], return a new map [vm] and
     a variable renaming [sigma] such that:
     - for all [s in dom(vm_1)], [vm(s) = vm_1(s)]
@@ -150,6 +159,18 @@ type vmap = (string qual * string,VarSym.t) Hashtbl.t
 let merge_vmap vm1 vm2 =
   let sigma = VarSym.H.create 134 in
   let vm  = Hashtbl.copy vm1 in
+  let pp s vs = 
+    let pp_qual fmt (q,s) = 
+      match q with
+      | Qual s1 -> Format.fprintf fmt "%s`%s" s1 s
+      | _       -> Format.fprintf fmt "%s" s in
+    Format.eprintf "%a -> %a(%i)@."
+                   pp_qual s 
+                   Game.pp_v vs (Id.tag vs.VarSym.id) in
+  Format.eprintf "vm1 =@.";
+  Hashtbl.iter pp vm1;
+  Format.eprintf "vm2 =@.";
+  Hashtbl.iter pp vm2;
   Hashtbl.iter
     (fun s vs ->
       if Hashtbl.mem vm1 s

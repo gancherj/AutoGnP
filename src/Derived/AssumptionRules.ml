@@ -27,6 +27,81 @@ let log_d = mk_log Bolt.Level.DEBUG
 
 (* ** Decisional assumptions
  * ----------------------------------------------------------------------- *)
+  
+let assumption_vars assm =
+  let addv se v = Se.add (mk_V v) se in
+  let se = 
+    Se.union (write_gcmds assm.ad_prefix1) (write_gcmds assm.ad_prefix2) in
+  let add_do se (_, vs, ((b1,_),(b2,_)), _) = 
+    let se = List.fold_left addv se vs in
+    let se = Se.union se (write_lcmds b1) in
+    Se.union se (write_lcmds b2) in
+  let add_ac se ad_ac = 
+    let se = List.fold_left addv se ad_ac.ad_ac_lv in
+    List.fold_left add_do se ad_ac.ad_ac_orcls in
+  let se = 
+    List.fold_left add_ac se assm.ad_acalls in
+  sv_of_se se 
+    
+
+let t_assm_dec_o ts name dir ren (rngs:ParserTypes.range_o list) ju =
+  let rn = "assumption_decisional" in
+  let assm =
+    try Mstring.find name ts.ts_assms_dec
+    with Not_found -> tacerror "%s: error no assumption %s" rn name
+  in
+  let assm_vars = assumption_vars assm in
+  (* create the renaming *)
+  let addv mvar v = 
+    let q = map_qual OrclSym.to_string v.VarSym.qual in
+    let x = Id.name v.VarSym.id in
+    Hashtbl.add mvar (q,x) v in
+  let avars = Hashtbl.create 10 in
+  VarSym.S.iter (addv avars) assm_vars;
+  let gvars = Hashtbl.create 10 in
+  VarSym.S.iter (addv gvars) (game_vars ju.ju_se.se_gdef);
+  let find_var fail mvar qx = 
+    try Hashtbl.find mvar qx 
+    with Not_found when fail -> 
+      let pp_qx fmt (q,x) = 
+        match q with
+        | Unqual -> Format.fprintf fmt "%s" x
+        | Qual q -> Format.fprintf fmt "%s.%s" q x in
+      tacerror "%s: unknown variable %a" rn pp_qx qx
+  in
+  let mk_o o = 
+    try Mstring.find o ts.ts_odecls 
+    with Not_found ->
+      tacerror "%s: unknown oracle %s" rn o in
+  let add_ren ren (qx, qx') = 
+    let x = find_var true avars qx in
+    let x' = 
+      try find_var false gvars qx' 
+      with Not_found ->
+        let q',x' = qx' in
+        let q' = map_qual mk_o q' in
+        VarSym.mk_qual x' q' x.VarSym.ty in
+    VarSym.M.add x x' ren in
+  let ren = List.fold_left add_ren VarSym.M.empty ren in
+
+  let mk_rng (i,j,ros) = 
+    let mk_ro ro = 
+      match ro with
+      | ParserTypes.RO_main(i,j,o) -> 
+        RO_rng(i-1,j-1,mk_o o)
+      | ParserTypes.RO_in_o (i,os) ->
+        let tbl = Hashtbl.create 10 in
+        let dok (k,otype,r) =
+          let dor (i,j,o) = (i-1,j-1,mk_o o) in
+          Hashtbl.add tbl (k-1,otype) (List.map dor r) in
+        List.iter dok os;
+        let f k ot = try Hashtbl.find tbl (k,ot) with Not_found -> [] in
+        RO_orcl (i-1, f) in
+    { r_start = i-1;
+      r_end   = j-1;
+      r_orcl  = List.map mk_ro ros;} in
+  let rngs = List.map mk_rng rngs in
+  T.t_assm_dec dir ren rngs assm ju
 
 let t_assm_dec_exact ts massm_name mdir mrngs mvnames ju =
   let rn = "assumption_decisional" in

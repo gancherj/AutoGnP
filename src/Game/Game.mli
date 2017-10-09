@@ -370,6 +370,7 @@ val pp_distr : qual:os qual -> F.formatter -> ty * expr list -> unit
 val pp_v : F.formatter -> VarSym.t -> unit
 val pp_binder : qual:os qual -> F.formatter -> vs list -> unit
 val pp_lcmd : qual:os qual -> F.formatter -> lcmd -> unit
+val pp_lcmds : qual:os qual -> F.formatter -> lcmd list -> unit
 val pp_ilcmd : nonum:bool -> qual:os qual -> F.formatter -> int * lcmd -> unit
 val pp_lcomp : nonum:bool -> qual:os qual -> F.formatter -> expr * lcmd list -> unit
 val string_of_otype : ohtype -> string
@@ -385,3 +386,8 @@ val pp_gdef : nonum:bool -> F.formatter -> gcmd list -> unit
 val pp_se : F.formatter -> sec_exp -> unit
 val pp_se_nonum : F.formatter -> sec_exp -> unit
 val pp_ps : F.formatter -> sec_exp list -> unit
+
+(* ----------------------------------------------------------------------- *)
+val sv_of_se : Expr.Se.t -> Syms.VarSym.S.t
+val game_vars : gcmd list -> Syms.VarSym.S.t
+

@@ -191,9 +191,10 @@ let inst_dec ren assm =
   (* FIXME: Not_found should be an error *)
   let ren_v vs = try VarSym.M.find vs ren with Not_found -> vs in
   let ren_e = Game.subst_v_expr ren_v in
-  let ren_ob = Game.subst_v_obody ren_v in
+  let ren_ob ob = Game.subst_v_obody ren_v ob in
   let ren_o (o, vs, (b1, b2), c) = 
-    (o, List.map ren_v vs, (ren_ob b1, ren_ob b2), c) in
+    let vs' = List.map ren_v vs in
+    (o, vs', (ren_ob b1, ren_ob b2), c) in
   let ren_acall ad_ac =
      {ad_ac_sym   = ad_ac.ad_ac_sym;
       ad_ac_lv    = L.map ren_v ad_ac.ad_ac_lv;

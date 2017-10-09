@@ -21,14 +21,14 @@ oracle orcl_AO : Fq -> Fq.
 
 assumption dec_O1O2 
 [
-  b <- AO() with orcl_AO(i) = {
-    x <-$ Fq;
+  x <-$ Fq; 
+  b <- AO() with orcl_AO(i) [once] = {
     return O1(i,x);
   };
 ] 
 [
-  b <- AO() with orcl_AO(i) = {
-    x <-$ Fq;
+  x <-$ Fq;
+  b <- AO() with orcl_AO(i) [once] = {
     return O2(i,x);
   };
 ]
@@ -61,22 +61,40 @@ bound_dist [
 
 print_goals : main1.
 
-assumption_decisional * dec_O1O2 -> [orcl_AO`x,orcl`x;orcl_AO`i,orcl`i'; b,b] 
-   1 3 [2 [(1 1 3 orcl_AO)] ].
-
-print_goals : main2.
-
-dist_eq.
-
-print_goals : main3.
-
-(*
-hybrid (1,1) {
+hybrid (2,1) {
   x <-$ Fq;
   return O2(i,x);
 }.
 
-    LR: move_main (1,1,1) mx.
+print_goals : main2.
 
-(* what do I do next? *)
-*)
+move_main (2,1,2) mx.
+
+print_goals : main3.
+
+move 2 -1.
+
+print_goals : main4.
+
+assumption_decisional * dec_O1O2 -> [x,mx;orcl_AO`i,orcl`i'; b,b] 
+   2 4 [3 [(1 = 1 2 orcl_AO)] ].
+
+print_goals : main5.
+
+dist_sym.
+
+print_goals : main6.
+
+move_main (2,1,1) mx.
+
+print_goals : main7.
+
+dist_eq.
+
+print_goals : main8.
+
+dist_eq.
+
+print_goals : main9.
+
+

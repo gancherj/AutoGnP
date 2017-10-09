@@ -477,6 +477,40 @@ maybe_upto:
 maybe_len:
 | COLON ap=int { ap }
 
+
+/*----------------------------------------------------------------------*/
+
+qual_id:
+| s=ID                                    { (Unqual,s) }
+| s1=ID BACKTICK s2=ID                    { (Qual s1, s2) }
+
+renaming1:
+| id1=qual_id COMMA id2=qual_id                 { id1,id2 }
+
+renaming: 
+| LBRACK l=seplist0(SEMICOLON, renaming1) RBRACK { l }
+
+oinrng:
+| i=NAT j=NAT o=ID  { i, j, o }
+
+oinrngs:
+| LPAR k=NAT t=otype? l=oinrng* RPAR { 
+      let t = match t with None -> Game.Onothyb | Some t -> Game.Oishyb t in 
+      k, t, l }
+
+orng:
+| i=NAT j=NAT o=ID { RO_main(i, j, o) }
+| i=NAT LBRACK l=oinrngs* RBRACK { RO_in_o(i,l) }
+
+orngs:
+| LBRACK o=orng* RBRACK {o}
+
+adv_o_rng:
+| i=NAT j=NAT o=orngs {i,j,o} 
+
+adv_o_rngs:
+| l=adv_o_rng* { l }
+
 /*----------------------------------------------------------------------
 (* ** tactics *) */
 
@@ -532,6 +566,12 @@ tactic :
 /* assumptions */
 | ASSUMPTION_DECISIONAL excl=EXCL? s=uopt(ID)
     d=uopt(dir) rngs=inter_pos* xs=option(ID+)   { Rassm_dec(excl=None,s,d,rngs,xs) }
+
+| ASSUMPTION_DECISIONAL STAR s=ID d=uopt(dir) 
+     ren=renaming rngs=adv_o_rngs { 
+       let d = match d with None -> Util.LeftToRight | Some d -> d in
+       Rassm_dec_o(s, d, ren, rngs) }
+
 | ASSUMPTION_COMPUTATIONAL excl=EXCL? s=uopt(ID)
     rngs=inter_pos*                              { Rassm_comp(excl=None,s,rngs) }
 

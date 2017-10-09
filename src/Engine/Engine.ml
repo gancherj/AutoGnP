@@ -276,7 +276,8 @@ let handle_tactic ts tac =
       in
       t_remove_assert ju
 
-    | PT.Rmove_to_main(i_j_k,vs)  -> T.core_tactic (CR.ct_move_main i_j_k vs) ju
+    | PT.Rmove_to_main(i_j_k,vs)  -> 
+      T.core_tactic (CR.ct_move_main i_j_k vs) ju 
 
     | PT.Rmove_to_orcl(p,(i,j,k),sv) ->
       let ci = get_pos p in
@@ -391,6 +392,9 @@ let handle_tactic ts tac =
 
     | PT.Rassm_dec(exact,maname,mdir,mrngs,msvs) ->
       t_assm_dec ts exact maname mdir (ranges ju mrngs) msvs ju
+
+    | PT.Rassm_dec_o(maname,mdir,ren,rngs) ->
+      t_assm_dec_o ts maname mdir ren rngs ju
 
     | PT.Rnorm_solve(se) ->
       let e = parse_e se in
@@ -712,9 +716,12 @@ let rec handle_instr verbose ts instr =
 
   | PT.AssmDec(s,inf,g0,g1,symvs) ->
     let vmap1 = Ht.create 137 in
-    let vmap2 = Ht.create 137 in
+    let vmap2 = Ht.create 137 in 
     let g0 = PU.gdef_of_parse_gdef vmap1 ts g0 in
     let g1 = PU.gdef_of_parse_gdef vmap2 ts g1 in
+    (* create the var map of the two games *)
+    let vmap1 = GameUtils.create_vmap (game_vars g0) in
+    let vmap2 = GameUtils.create_vmap (game_vars g1) in
     let vmap, sigma = GameUtils.merge_vmap vmap1 vmap2 in
     let g1 = subst_v_gdef sigma g1 in
     let parse_var s =

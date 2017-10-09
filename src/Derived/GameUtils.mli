@@ -49,6 +49,7 @@ val iter_ctx_se_exp :
 
 type vmap = (string qual * string,VarSym.t) Hashtbl.t
 
+val create_vmap     :  Syms.VarSym.S.t -> vmap
 val merge_vmap      : vmap -> vmap -> vmap * (vs -> vs)
 val vmap_of_vss     : VarSym.S.t -> vmap
 val vmap_of_ves     : Se.t -> vmap
