@@ -42,29 +42,34 @@ oracle A_SL_O : BS_n -> Matrix_{m+m,1}.
 assumption dec_SL_SR
 [
   tgrA <-$ BS_tgr;
+  let A = TrapGen(tgrA)#0;
+  let TA = TrapGen(tgrA)#1;
   rinjr <-$ BS_rinjr;
+  let R = Rinj(rinjr);
   B <-$ Matrix_{n,m};
   u <-$ Matrix_{n,1};
   i' <- A_SL_G1();
-  b <- A_SL_G(TrapGen(tgrA)#0,(TrapGen(tgrA)#0)*(Rinj(rinjr)) - IdHash(i') * B,B,u) with
+  b <- A_SL_G(A,A*R - IdHash(i') * B,B,u) with
   A_SL_O(i) = {
     guard (i <> i');
     slr <-$ BS_sl;
-    return SampleLeft(slr, TrapGen(tgrA)#0, (TrapGen(tgrA)#0)*(Rinj(rinjr)) - IdHash(i') * B + IdHash(i) * B, TrapGen(tgrA)#1, u);
+    return SampleLeft(slr, A, A*R - IdHash(i') * B + IdHash(i) * B, TA, u);
     };
 ]
 [
-  i' <- A_SL_G1();
+  i' <- A_SL_G1(); 
   tgr <-$ BS_tgr;
   A <-$ Matrix_{n,m};
   rinjr <-$ BS_rinjr;
+  let R = Rinj(rinjr);
+  
     u <-$ Matrix_{n,1};
   
-  b <- A_SL_G(A,A*(Rinj(rinjr)) - IdHash(i') * (TrapGen(tgr)#0),TrapGen(tgr)#0,u) with
+  b <- A_SL_G(A,A*R - IdHash(i') * (TrapGen(tgr)#0),TrapGen(tgr)#0,u) with
   A_SL_O(i) = {
     guard (i <> i');
     slr <-$ BS_sl;
-    return SampleRight(slr, A, (IdHash(i) - IdHash(i')) * TrapGen(tgr)#0, Rinj(rinjr), TrapGen(tgr)#1, u);
+    return SampleRight(slr, A, (IdHash(i) - IdHash(i')) * TrapGen(tgr)#0, R, TrapGen(tgr)#1, u);
   };
   ].
 
@@ -200,13 +205,17 @@ bound_adv [
 
     unfold b''.
     abstract 20 ans (b = b').
-    assumption_decisional * dec_SL_SR -> [tgrA, tgrA; i', i'; rinjr, rinjr; B,B; u,u; b, ans; A_SL_O`slr, KeyGen`slr] 5 7 [] 8 20 [19 [(1 1 4 A_SL_O)]].
-    
+    abstract 3 R Rinj(rinjr).
+    abstract 2 A TrapGen(tgrA)#0.
+    abstract 3 TA TrapGen(tgrA)#1.
+    assumption_decisional * dec_SL_SR -> [A,A; TA, TA; R,R; tgrA, tgrA; i', i'; rinjr, rinjr; B,B; u,u; b, ans; A_SL_O`slr, KeyGen`slr] 8 10 [] 11 23 [22 [(1 1 4 A_SL_O)]].
+   norm. 
  (* H3: invoke LWE assumption *) 
  mat_fold 2 4 Au.
  move Au 1.
  move s 2.
- move chir 3. //=.
+ move chir 3.
+   norm. //=.
  (* need to factor (a || ab) as a * (1 || b) *)
  assumption_decisional! LWE -> .
  rnd r__ (x -> tr x) (x -> tr x); //.
