@@ -183,7 +183,8 @@ let needed_vars_dec dir assm =
 let private_vars_dec assm =
   L.fold_left
     (fun vset cmd ->
-      match cmd with GSamp(v,_) -> Se.add (mk_V v) vset | _ -> assert false)
+      match cmd with GSamp(v,_) -> Se.add (mk_V v) vset | _ -> tacerror "bad
+      gcmd: %a" (pp_gcmd ~nonum:false) cmd)
     Se.empty
     (assm.ad_prefix1@assm.ad_prefix2)
     

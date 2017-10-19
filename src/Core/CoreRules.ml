@@ -121,7 +121,7 @@ let merge_proof_states pss validation =
 
 let ensure_gdef_eq rn a b =
   if not (equal_gdef a b) then
-    tacerror "@[<v>%s: games not equal,@ @[<v>%a@]@ @[<v>%a@]@]"
+    tacerror "@[<v>%s: games not equal,@ @[<v>%a@]@ \n \n @[<v>%a@]@]"
       rn (pp_gdef ~nonum:false) a (pp_gdef ~nonum:false) b
 
 let ensure_event_eq rn e1 e2 =
@@ -1074,6 +1074,10 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
         let z = 
           match L.drop (L.length gc1) body1 with
           | [GLet(z, e)] when equal_expr res1 e -> z
+          | [GLet(z, e)] -> tacerror "%s: cannot recognize oracle res in main,
+          got %a, expected %a" rn pp_expr e pp_expr res1
+          | [gc] -> tacerror "%s: cannot reconize oracle res in main, got gcmd
+          %a" rn (pp_gcmd ~nonum:false) gc
           | _ -> tacerror "%s: cannot reconize oracle res in main" rn
         in
         let i = GLet(x,e) in
@@ -1130,6 +1134,8 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
           let z = 
             match L.drop (L.length lc1) body1 with
             | [LLet(z, e)] when equal_expr res1 e -> z
+            | [LLet(z, e)] -> tacerror "%s: cannot recognize oracle res in main,
+            got %a, expected %a" rn pp_expr e pp_expr res1
             | _ -> tacerror "%s: cannot reconize oracle res in main" rn
           in
           let i = LLet(x,e) in
@@ -1220,7 +1226,8 @@ let assm_dec_valid_ranges rn dir assm acalls_ju (rngs:rng list) =
     match rngs, acalls with
     | [], [] -> 
       if len_all <> (List.length acalls_ju + pref_len) then
-         tacerror "%s: size of range and adversary calls do not match up " rn;
+          tacerror "%s: size of range and adversary calls do not match up;
+          %i vs %i "  rn len_all (List.length acalls_ju + pref_len);
       acalls_new
     | r::rngs, ad_ac::acalls ->
       let vres = ad_ac.ad_ac_lv in

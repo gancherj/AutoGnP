@@ -33,7 +33,43 @@ operator SampleRight :
 (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator IdHash : BS_n -> Matrix_{n,n}. (* domain of this could change *)
 
-operator SampleGauss : (BS_sl * Matrix_{n,m} * Matrix_{n,m}) -> Matrix_{m+m,1}.
+operator SampleGauss : (BS_sl * Matrix_{n,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
+
+adversary A_SL_G : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1}) -> Bool.
+adversary A_SL_G1 : () -> BS_n.
+oracle A_SL_O : BS_n -> Matrix_{m+m,1}.
+
+assumption dec_SL_SR
+[
+  tgrA <-$ BS_tgr;
+  rinjr <-$ BS_rinjr;
+  B <-$ Matrix_{n,m};
+  u <-$ Matrix_{n,1};
+  i' <- A_SL_G1();
+  b <- A_SL_G(TrapGen(tgrA)#0,(TrapGen(tgrA)#0)*(Rinj(rinjr)) - IdHash(i') * B,B,u) with
+  A_SL_O(i) = {
+    guard (i <> i');
+    slr <-$ BS_sl;
+    return SampleLeft(slr, TrapGen(tgrA)#0, (TrapGen(tgrA)#0)*(Rinj(rinjr)) - IdHash(i') * B + IdHash(i) * B, TrapGen(tgrA)#1, u);
+    };
+]
+[
+  i' <- A_SL_G1();
+  tgr <-$ BS_tgr;
+  A <-$ Matrix_{n,m};
+  rinjr <-$ BS_rinjr;
+    u <-$ Matrix_{n,1};
+  
+  b <- A_SL_G(A,A*(Rinj(rinjr)) - IdHash(i') * (TrapGen(tgr)#0),TrapGen(tgr)#0,u) with
+  A_SL_O(i) = {
+    guard (i <> i');
+    slr <-$ BS_sl;
+    return SampleRight(slr, A, (IdHash(i) - IdHash(i')) * TrapGen(tgr)#0, Rinj(rinjr), TrapGen(tgr)#1, u);
+  };
+  ].
+
+
+
 
 (* just used to introduce irrelevant samples *)
 adversary A_dkillnm : () -> Bool.
@@ -122,34 +158,53 @@ bound_adv [
   unfold A1.
   abstract 16 A1 ((A * R) - (IdHash(i') * B)).
 
+  (* set up for invocation *)
+  hybrid (20,1) {
+    let id' = id;
+    guard (id' <> i');
+    slr <-$ BS_sl;
+    let r = SampleLeft(slr, A, A1 + (IdHash(id') * B), TA, u);
+    return r;
+    }.
+    LR: norm.
+    dist_eq.
+    move 4 1.
+    move 5 3.
+    move 7 4.
+    move R 6.
+    move B 7.
+    move A1 8.
+    move u 9.
+    abstract 10 tt (A, A1, B, u).
+    abstract 22 b'' b'.
+    abstract 1 tt0 ().
+    rename i' i''.
+    unfold A.
+    unfold TA.
+    unfold R.
+    unfold A1.
+    abstract 3 i' i''.
 
+    move 1 7.
+    move 2 7.
+    move 1 6.
 
- (* H2: rewrite SampleLeft(slr, A, AR - H*B + Hid * B, T_A, u) where A,TA trapgen, B uniform into
-                SampleRight(A, (Hid - H* ) * B, R, T_B, u) where A uniform, B,TB trapgen *) 
+    hybrid (19,1) {
+      let id' = id;
+      guard (id' <> i');
+      slr <-$ BS_sl;
+      let r = SampleLeft(slr, TrapGen(tgrA)#0, ((TrapGen(tgrA)#0 * Rinj(rinjr)) - (IdHash(i') * B)) + (IdHash(id') * B), TrapGen(tgrA)#1,u);
+      return r; }.
+    LR: norm.
+    dist_eq.
 
-
- hybrid (20,1) {
-   guard (id <> i');
-     slr <-$ BS_sl;
-   return SampleGauss(slr, A, A1 + (IdHash(id) * B));}.
- admit.
-
- assumption_decisional! TrapGenUnif -> [tgrA] A.
-   //. (* replace trapgen A with uniform *)
- move B 1.
- assumption_decisional! TrapGenUnif <- [B] tgrB; //. (* replace uniform B with trapgen *)
-
- (* how to encode? *)
- hybrid (10,1) {
-   guard (id <> i');
-     slr <-$ BS_sl;
-   return SampleRight(slr, A, (IdHash(id) - IdHash(i')) * TrapGen(tgrB)#0, Rinj(rinjr), TrapGen(tgrB)#1, u)}.
-     admit.
-
-
+    unfold b''.
+    abstract 20 ans (b = b').
+    assumption_decisional * dec_SL_SR -> [tgrA, tgrA; i', i'; rinjr, rinjr; B,B; u,u; b, ans; A_SL_O`slr, KeyGen`slr] 5 7 [] 8 20 [19 [(1 1 4 A_SL_O)]].
+    
  (* H3: invoke LWE assumption *) 
-     mat_fold 2 7.
- move AB 1.
+ mat_fold 2 4 Au.
+ move Au 1.
  move s 2.
  move chir 3. //=.
  (* need to factor (a || ab) as a * (1 || b) *)
