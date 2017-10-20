@@ -1,6 +1,9 @@
-
+  (* just used to introduce irrelevant samples *)
+adversary A_dkillnm : () -> Bool.
+assumption [inf] dkill_nm [
+  a <-$ Matrix_{n,m}; b <- A_dkillnm();
+] [ b <- A_dkillnm();].
 operator Chi : BS_chir -> Matrix_{m+1,1}.
-
 
 adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
 assumption LWE
@@ -8,17 +11,9 @@ assumption LWE
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
 
-operator Rinj : BS_rinjr -> Matrix_{m,m}. (* Rr has the denotation m^2 *)
-
+operator Rinj : BS_rinjr -> Matrix_{m,m}. 
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
-
-adversary TGA : Matrix_{n,m} -> Bool.
-assumption TrapGenUnif [
-  tgr <-$ BS_tgr;
-  b <- TGA(TrapGen(tgr)#0); ]
-[ M <-$ Matrix_{n,m};
-  b <- TGA(M);].
 
 adversary Adv_LHL : (BS_tgr * BS_chir * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m} * Matrix_{m+1,1}) -> Bool.
 assumption LHL
@@ -31,14 +26,12 @@ assumption LHL
 operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator SampleRight : 
 (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
-operator IdHash : BS_n -> Matrix_{n,n}. (* domain of this could change *)
+operator IdHash : BS_n -> Matrix_{n,n}. 
 
-operator SampleGauss : (BS_sl * Matrix_{n,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
-
+(* assumption for sample left/right. currently it is somewhat specialized to the way it's used in the scheme. *)
 adversary A_SL_G : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1}) -> Bool.
 adversary A_SL_G1 : () -> BS_n.
 oracle A_SL_O : BS_n -> Matrix_{m+m,1}.
-
 assumption dec_SL_SR
 [
   tgrA <-$ BS_tgr;
@@ -74,30 +67,9 @@ assumption dec_SL_SR
   ].
 
 
-
-
-(* just used to introduce irrelevant samples *)
-adversary A_dkillnm : () -> Bool.
-assumption [inf] dkill_nm [
-  a <-$ Matrix_{n,m}; b <- A_dkillnm();
-] [ b <- A_dkillnm();].
-
-adversary A_dkilltgr : () -> Bool.
-assumption [inf] dkill_tgr [
-  tgr <-$ BS_tgr; b <- A_dkilltgr();
-] [ b <- A_dkilltgr();].
-
-
-
-
-  (* A1 : () to id space *)
 adversary Adv1 : () -> BS_n.
-
 operator Minj : Bool -> Matrix_{1,1}.
-
 oracle KeyGen : BS_n -> Matrix_{m+m, 1}.
-
-  (* A3 : challenge ciphertext to bool *)
 
 adversary Adv2 : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1} * (* public parameters *)
                Matrix_{1,m+m} * Matrix_{1,1}) (* ciphertext *) -> Bool.
@@ -173,42 +145,27 @@ bound_adv [
     }.
     LR: norm.
     dist_eq.
-    move 4 1.
-    move 5 3.
-    move 7 4.
-    move R 6.
-    move B 7.
-    move A1 8.
-    move u 9.
-    abstract 10 tt (A, A1, B, u).
-    abstract 22 b'' b'.
-    abstract 1 tt0 ().
-    rename i' i''.
-    unfold A.
-    unfold TA.
-    unfold R.
+    move A 2.
+    move TA 3.
+    move R 5.
+    move B 6.
+    move u 7.
+    move i' 8.
+    abstract 8 tt ().
+    abstract 10 res i'.
+    abstract 11 tt1 (A, A*R - IdHash(res) * B, B, u).  
+    abstract 24 ans (b = b').
     unfold A1.
-    abstract 3 i' i''.
-
-    move 1 7.
-    move 2 7.
-    move 1 6.
-
-    hybrid (19,1) {
+    hybrid (22,1) {
       let id' = id;
-      guard (id' <> i');
-      slr <-$ BS_sl;
-      let r = SampleLeft(slr, TrapGen(tgrA)#0, ((TrapGen(tgrA)#0 * Rinj(rinjr)) - (IdHash(i') * B)) + (IdHash(id') * B), TrapGen(tgrA)#1,u);
-      return r; }.
-    LR: norm.
-    dist_eq.
-
-    unfold b''.
-    abstract 20 ans (b = b').
-    abstract 3 R Rinj(rinjr).
-    abstract 2 A TrapGen(tgrA)#0.
-    abstract 3 TA TrapGen(tgrA)#1.
-    assumption_decisional * dec_SL_SR -> [A,A; TA, TA; R,R; tgrA, tgrA; i', i'; rinjr, rinjr; B,B; u,u; b, ans; A_SL_O`slr, KeyGen`slr] 8 10 [] 11 23 [22 [(1 1 4 A_SL_O)]].
+      guard (id' <> res);
+        slr <-$ BS_sl;
+      let r = SampleLeft(slr, A, A*R - IdHash(res)*B + IdHash(id') * B, TA, u);
+      return r;
+      }.
+          LR: norm.
+      dist_eq.
+    assumption_decisional * dec_SL_SR -> [tgrA, tgrA; A,A; TA, TA; rinjr, rinjr; R, R; B,B; u,u; i', res; A_SL_O`slr, KeyGen`slr; b,ans] 8 10 [] 11 23 [22 [(1 1 4 A_SL_O)]].
    norm. 
  (* H3: invoke LWE assumption *) 
  mat_fold 2 4 Au.
