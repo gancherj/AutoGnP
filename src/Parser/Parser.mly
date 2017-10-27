@@ -28,6 +28,7 @@
 
 %token <string> TBS
 %token TMAT
+%token TLIST
 %token TBOOL TFQ 
 %token <string> TG
 
@@ -57,6 +58,7 @@
 %token LOG
 %token TRUE FALSE
 %token FORALL EXISTS
+
 
 %token IN NOTIN
 
@@ -191,6 +193,7 @@ typ :
 | i=TG                           { G(i) }
 | TFQ                            { Fq }
 | TMAT LCBRACE d1=dimexp COMMA d2=dimexp RCBRACE { Mat(d1,d2)}
+| TLIST LCBRACE d=dimexp RCBRACE t=typ           { List(d,t) }
 | LPAR l=seplist0(STAR,typ) RPAR { mk_Prod l }
 | i=ID                           { TySym(i) }
 | t=typ CARET n=NAT              { Prod(Util.replicate n t) }

@@ -17,6 +17,7 @@ type parse_ty =
   | Fq
   | BS      of string
   | Mat     of parsedim * parsedim
+  | List    of parsedim * parse_ty
   | G       of string
   | TySym   of string
   | Prod    of parse_ty list

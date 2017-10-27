@@ -69,6 +69,7 @@ type op =
   | MatConcat
   | MatSplitLeft
   | MatSplitRight
+  | ListMult
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
@@ -78,6 +79,7 @@ type nop =
   | Xor    (* Xor of bitstrings *)
   | Land   (* logical and *)
   | Lor    (* logical or *)
+  | ListPlus
 
 type binding = VarSym.t list * Olist.t
 
@@ -159,6 +161,7 @@ val mk_FDiv        : expr -> expr -> expr
 val mk_Eq          : expr -> expr -> expr
 val mk_Not         : expr -> expr
 val mk_Ifte        : expr -> expr -> expr -> expr
+val mk_ListMult    : expr -> expr -> expr
 val mk_MatMult     : expr -> expr -> expr
 val mk_MatMinus    : expr -> expr -> expr
 val mk_MatTrans    : expr -> expr
@@ -172,6 +175,7 @@ val mk_Xor         : expr list -> expr
 val mk_Land        : expr list -> expr
 val mk_Lor         : expr list -> expr
 val mk_InEq        : expr -> expr -> expr
+val mk_ListPlus    : expr list -> expr
 val mk_MatPlus     : expr list -> expr
 val mk_MatPlus_safe: expr list -> ty -> expr
 (* ** Generic functions on [expr]

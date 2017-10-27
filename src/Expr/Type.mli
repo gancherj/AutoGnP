@@ -31,6 +31,7 @@ and ty_node =
   | BS of Lenvar.id
   | Bool
   | Mat of (mdim * mdim)
+  | List of (mdim * ty)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq
@@ -42,6 +43,10 @@ val concat_compat_ty : ty -> ty -> bool
 val split_compat : ty -> bool
 val hash_ty    : ty -> int
 val compare_ty : ty -> ty -> int
+
+(* list specific *)
+val listmult_compat_ty : ty -> ty -> bool
+val list_get_ty : ty -> (mdim * ty)
 
 (* matrix specific *)
 val matmult_compat_ty : ty -> ty -> bool
@@ -66,6 +71,7 @@ val mk_Bool    : ty
 val mk_Prod    : ty list -> ty
 val mk_Int     : ty
 val mk_Mat     : mdim -> mdim -> ty 
+val mk_List    : mdim -> ty -> ty
 
 (* ** Indicator and destructor functions *)
 

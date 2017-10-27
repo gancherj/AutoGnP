@@ -44,6 +44,7 @@ and ty_node =
   | BS of Lenvar.id
   | Bool
   | Mat of (mdim * mdim)
+  | List of (mdim * ty)
   | G of Groupvar.id
   | TySym of Tysym.id
   | Fq
@@ -67,6 +68,14 @@ let matmult_compat_ty t1 t2 =
     | Mat (_,b) -> (match t2.ty_node with
                     | Mat (c,_) -> mdim_equal b c 
                     | _ -> false)
+    | _ -> false
+
+let listmult_compat_ty t1 t2 =
+    match t1.ty_node with
+    | List (d1, t) -> (match t2.ty_node with
+                      | List (d2, tp) -> (mdim_equal d1 d2) &&
+                      (matmult_compat_ty t tp)
+                      | _ -> false)
     | _ -> false
 
 let concat_compat_ty t1 t2 =
@@ -93,6 +102,11 @@ let get_split_dim t =
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
 
+let list_get_ty t =
+    match t.ty_node with
+    | List p -> p
+    | _ -> assert false
+
 let matmult_get_dim t1 t2 =
     match t1.ty_node with
     | Mat (a,_) -> (match t2.ty_node with
@@ -112,10 +126,11 @@ module Hsty = Hashcons.Make (struct
     | TySym ts1, TySym ts2           -> Tysym.equal ts1 ts2
     | Fq, Fq                         -> true
     | Mat (a,b), Mat (c,d)           -> (mdim_equal a c) && (mdim_equal b d)
+    | List (d,tp), List (d2, tp2)    -> (mdim_equal d d2) && (equal_ty tp tp2)
     | Prod ts1, Prod ts2             -> list_eq_for_all2 equal_ty ts1 ts2
     | _                              -> false
 
-  let hash t =
+  let rec hash t =
     match t.ty_node with
     | BS lv         -> hcomb 1 (Lenvar.hash lv)
     | Bool          -> 2
@@ -125,6 +140,7 @@ module Hsty = Hashcons.Make (struct
     | Prod ts       -> hcomb_l hash_ty 6 ts
     | Mat (a,b)     -> hcomb 8 (hcomb (mdim_hash a) (mdim_hash b))  
     | Int           -> 7
+    | List (d, tp)   -> hcomb 9 (hcomb (mdim_hash d) (hash tp))
 
   let tag n t = { t with ty_tag = n }
 end)
@@ -150,6 +166,8 @@ let mk_BS lv = mk_ty (BS lv)
 let mk_G gv = mk_ty (G gv)
 
 let mk_Mat n m = mk_ty (Mat (n,m)) 
+
+let mk_List d t = mk_ty (List (d,t))
 
 let mk_TySym ts = mk_ty (TySym ts)
 
@@ -226,6 +244,7 @@ let rec pp_ty fmt ty =
   | Mat (a,b)         -> F.fprintf fmt "Matrix_{%s}" ((mdim_str a) ^ "," ^
   (mdim_str b))
   | Bool              -> F.fprintf fmt "Bool"
+  | List (d, tp)      -> F.fprintf fmt "List_{%s} %a" (mdim_str d) pp_ty tp
   | Fq                -> F.fprintf fmt "Fq"
   | TySym ts          -> F.fprintf fmt "%s" (Tysym.name ts)
   | Prod ts           -> F.fprintf fmt "(%a)" (pp_list " * " pp_ty) ts

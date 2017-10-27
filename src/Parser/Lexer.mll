@@ -206,6 +206,9 @@ rule lex = parse
   | "Matrix_"                   {TMAT}
   | "G_"(number_id as s)        { TG(s) }                     (* kw: type   *)
 
+  (* Type constructors *)
+  | "List_"                     { TLIST }
+
   (* Indexed constants *)
   | "L_"(ident as s)            { LIST(s) }                   (* kw: op     *)
   | "0_"(number_id as s)        { ZBS(s) }                    (* kw: op     *)

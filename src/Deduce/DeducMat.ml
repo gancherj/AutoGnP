@@ -13,24 +13,9 @@ let rec get_somelist es = match es with
             | Some a -> a :: (get_somelist es')
             | _ -> []
 
-let rec e_depth e = match e.e_node with
-    | App(_, es) -> 1 + List.fold_left max 0 (List.map e_depth es)
-    | Nary(_, es) -> 1 + List.fold_left max 0 (List.map e_depth es)
-    | _ -> 0
-
-
 let mk_log level = mk_logger "Deduce.DeducMat" level "DeducMat.ml"
-let log_i = mk_log Bolt.Level.DEBUG
 
 let norm_e e = Norm.norm_expr ~strong:true e
-let norm_ei ei = (Norm.norm_expr ~strong:true (fst ei), I (Norm.norm_expr
-~strong:true (expr_of_inverter (snd ei))))
-
-let ei_op op ei = let (e,i) = ei in (op e, I (op (expr_of_inverter i)))
-let ei_bop op ei1 ei2 = let (e1, i1) = ei1 in
-                        let (e2, i2) = ei2 in
-                        (op e1 e2, I (op (expr_of_inverter i1) (expr_of_inverter
-                        i2)))
 
 let i_bop op i1 i2 = I (op (expr_of_inverter i1) (expr_of_inverter i2))
 let i_mkapp o is ty = I (mk_App o (List.map expr_of_inverter is) ty) 

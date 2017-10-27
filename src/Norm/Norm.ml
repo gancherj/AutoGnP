@@ -21,6 +21,7 @@ let rec norm_type e =
   match e.e_ty.ty_node with
   | TySym _ | Fq | Bool | Int | BS _ -> e
   | Mat _ -> e 
+  | List _ -> e
   | G gv    -> mk_GExp_Gen gv (mk_GLog e)   (* g ^ (log x) *)
 
   | Prod lt -> mk_Tuple (List.mapi (fun i _ -> norm_type (mk_Proj i e)) lt)
@@ -170,7 +171,7 @@ and mk_simpl_op ~strong op l =
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
     | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans | MatMinus | MatConcat
-    | MatSplitLeft | MatSplitRight ), _ -> 
+    | MatSplitLeft | MatSplitRight | ListMult), _ -> 
             assert false (* field stuff handled by mk_simpl_field_expr; mat
             stuff handled by mk_simpl_mat_expr*)
 
@@ -178,6 +179,7 @@ and mk_simpl_nop ~strong op l =
   match op with
 
   | MatPlus -> assert false (* handled by mk_simpl_mat_expr *)
+  | ListPlus -> assert false
 
   | FPlus  | FMult -> (* handled by mk_simpl_field_expr *)
     assert false

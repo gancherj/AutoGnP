@@ -1,7 +1,4 @@
 open Expr
-open Util
-open ExprUtils
-open Type
 
 let rec superset es = match es with
 | [] -> [[]]
@@ -28,11 +25,11 @@ let unary_app_extract op e = match e.e_node with | App(op', [e']) when op'=op ->
 
 let plus_unary_extract op es =  mk_MatPlus (List.map (unary_app_extract op) es)
 
-let is_mult_with_l a e = match e.e_node with | App(MatMult, [e1; e2]) when a=e1 -> true | _ -> false
-let is_mult_with_r b e = match e.e_node with | App(MatMult, [e1; e2]) when b=e2 -> true | _ -> false
+let is_mult_with_l a e = match e.e_node with | App(MatMult, [e1; _]) when a=e1 -> true | _ -> false
+let is_mult_with_r b e = match e.e_node with | App(MatMult, [_; e2]) when b=e2 -> true | _ -> false
 
-let extract_mult_l e = match e.e_node with | App(MatMult, [e1;e2]) -> e1 | _ -> assert false
-let extract_mult_r e = match e.e_node with | App(MatMult, [e1;e2]) -> e2 | _ -> assert false
+let extract_mult_l e = match e.e_node with | App(MatMult, [e1;_]) -> e1 | _ -> assert false
+let extract_mult_r e = match e.e_node with | App(MatMult, [_;e2]) -> e2 | _ -> assert false
 
 (* sum of F = F of sum for trans, opp, splits *)
 let plus_unary_fold es =
@@ -46,7 +43,7 @@ let plus_unary_fold es =
                 Some (mk_MatSplitRight (plus_unary_extract MatSplitRight es)) else
             None
 
-let rec combine (xs : 'a list) (yss : 'a list list) : 'a list list =
+let combine (xs : 'a list) (yss : 'a list list) : 'a list list =
     match yss with
     | [] -> List.map (fun x -> [x]) xs
     | _ ->
@@ -54,7 +51,7 @@ let rec combine (xs : 'a list) (yss : 'a list list) : 'a list list =
         List.map (fun ys ->
             List.rev (x :: ys)) yss) xs)
 
-let rec rows_of_cols (ess : 'a list list) = 
+let rows_of_cols (ess : 'a list list) = 
     List.fold_left (fun acc x -> combine x acc) [] ess
 
 
@@ -154,7 +151,7 @@ and unnorm_plus_multi to_add (es : expr list) =
 
 (* a*b + a * c -> a * (b + c) *)
 and unnorm_plus_distr_l to_add (es : expr list) = match (List.hd es).e_node with
-    | App(MatMult, [e1; e2]) ->
+    | App(MatMult, [e1; _]) ->
             if List.for_all (is_mult_with_l e1) es then
                 let rights = List.map extract_mult_r es in
                 to_add := mk_MatMult e1 (mk_MatPlus rights) :: !to_add
@@ -163,7 +160,7 @@ and unnorm_plus_distr_l to_add (es : expr list) = match (List.hd es).e_node with
 
 (* a * b + c * b -> (a + c) * b *)
 and unnorm_plus_distr_r to_add (es : expr list) = match (List.hd es).e_node with
-    | App(MatMult, [e1; e2]) ->
+    | App(MatMult, [_; e2]) ->
             if List.for_all (is_mult_with_r e2) es then
                 let lefts = List.map extract_mult_l es in
                 to_add := mk_MatMult (mk_MatPlus lefts) e2 :: !to_add
@@ -205,5 +202,5 @@ let expand e depth =
     try
         expand_ [e] depth
     with
-        TypeError (a,b,c,d,s) ->
+        TypeError (_,_,_,_,s) ->
             print_string s; [e]

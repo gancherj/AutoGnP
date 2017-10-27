@@ -4,7 +4,6 @@ open ExprUtils
 open Util
 
 let mk_log level = mk_logger "Deduce.Deduc" level "Deduc.ml"
-let log_i = mk_log Bolt.Level.INFO
 
 let rec rem_first_occ f xs = match xs with
 | [] -> []
@@ -113,19 +112,6 @@ let is_plus e = match e.e_node with Nary(MatPlus, _) -> true | _ -> false
 let extract_plus e = match e.e_node with 
     | Nary(MatPlus, es) -> es
     | _ -> assert false
-
-let is_minus e = match e.e_node with App(MatMinus, _) -> true | _ -> false
-
-let extract_minus e = match e.e_node with
-    | App(MatMinus, [e1;e2]) -> (e1, e2)
-    | _ -> assert false
-
-let is_mult e = match e.e_node with App(MatMult, _) -> true | _ -> false
-
-let extract_mult e = match e.e_node with
-    | App(MatMult, [e1;e2]) -> (e1, e2)
-    | _ -> assert false
-
 
 
 let rec norm_mat_expr nftop  e =

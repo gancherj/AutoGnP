@@ -78,6 +78,7 @@ type op =
   | MatConcat
   | MatSplitLeft
   | MatSplitRight
+  | ListMult
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -87,6 +88,7 @@ type nop =
   | Xor        (* Xor of bitstrings *)
   | Land       (* logical and *)
   | Lor        (* logical or *)
+  | ListPlus
 
 type binding = VarSym.t list * Olist.t
 
@@ -127,6 +129,7 @@ let op_hash = function
   | FInv           -> 6
   | FDiv           -> 7
   | Eq             -> 8
+  | ListMult       -> 24
   | MatMult        -> 18
   | MatOpp         -> 19
   | MatMinus       -> 21
@@ -150,6 +153,7 @@ let nop_hash = function
   | Land   -> 4
   | Lor    -> 6
   | GMult  -> 5
+  | ListPlus -> 8
 
 let quant_hash= function
   | All    -> 1
@@ -225,6 +229,10 @@ let ensure_mdim_equal n m =
 let ensure_ty_equal ty1 ty2 e1 e2 s =
   ignore (equal_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
+let ensure_listmult_compat ty1 ty2 e1 e2 s =
+    ignore (listmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
+
+
 let ensure_matmult_compat ty1 ty2 e1 e2 s =
     ignore (matmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
@@ -271,6 +279,7 @@ let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
 let mk_MatId n m =
     ensure_mdim_equal n m;
     mk_Cnst MatId (mk_Mat n m)
+
 
 (* *** Fixed arity mk functions *)
 
@@ -328,6 +337,7 @@ let mk_Ifte a b c =
   ensure_ty_equal b.e_ty c.e_ty b (Some c) "mk_Ifte";
   mk_App Ifte [a;b;c] b.e_ty
 
+
 (* FIXME: check types? *)
 let mk_FunCall f e =
   ensure_ty_equal e.e_ty f.FunSym.dom e None "mk_FunCall";
@@ -344,6 +354,13 @@ let mk_MapLookup h e =
 let mk_MapIndom h e =
   ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapIndom";
   mk_App (MapIndom(h)) [e] mk_Bool
+
+let mk_ListMult a b =
+    ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
+    let (d1, t1) = list_get_ty a.e_ty in
+    let (_, t2) = list_get_ty b.e_ty in
+    let (n,m) = matmult_get_dim t1 t2 in
+    mk_App (ListMult) [a;b] (mk_List d1 (mk_Mat n m))
 
 
 let mk_MatMult a b =
@@ -406,6 +423,19 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
+let mk_ListPlus es =
+    match es with
+    | e :: _ ->
+        begin match e.e_ty.ty_node with
+        | List (d,t) -> 
+                begin match t.ty_node with
+                | Mat (n,m) -> mk_nary "mk_ListPlus" true ListPlus es (mk_List d (mk_Mat n m))
+                | _ -> failwith (F.sprintf "Addition of lists only supported for
+                matrices")
+                end
+        | _ -> failwith (F.sprintf "Bad listplus")
+        end
+    | _ -> failwith (F.sprintf "empty listplus")
 
 let mk_MatPlus es =
     match es with
@@ -458,6 +488,7 @@ let mk_Nary op es =
   | Land  -> mk_Land  es
   | Lor   -> mk_Lor  es
   | GMult -> mk_GMult es
+  | ListPlus -> mk_ListPlus es
 
 (* *** Remaining mk functions *)
 

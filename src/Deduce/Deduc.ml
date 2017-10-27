@@ -46,6 +46,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FOpp, _             -> add_known e (mk_FOpp inv)
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
+      | ListMult, _         -> failwith "unimp"
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
       | MatConcat, [e1; e2] -> add_known e1 (mk_MatSplitLeft inv); add_known e2
@@ -80,7 +81,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let add_sub_solver e =
     log_i (lazy (fsprintf "@[<hov>add_sub_solver[maybe]:@ @[<hov 2>%a@]" pp_expr e));
     match e.e_ty.ty_node with
-    | BS _ | Fq | G _ | Bool | Mat _ ->
+    | BS _ | Fq | G _ | Bool | Mat _ | List _ ->
       if is_G e.e_ty && not ppt then () else
       begin try
         let s = Hty.find sub_solver e.e_ty in
@@ -138,6 +139,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
               add_sub e; List.iter (register_subexprs true) es 
       
+      | ListMult -> 
+              add_sub e; List.iter (register_subexprs true) es 
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this
@@ -152,6 +155,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Xor ->
         add_sub_solver e; List.iter (register_subexprs false) es
       | MatPlus ->
+        add_sub e; List.iter (register_subexprs true) es
+      | ListPlus ->
         add_sub e; List.iter (register_subexprs true) es
       end
       (* normal form is g^log(v) and must have been already added *)
@@ -231,6 +236,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       | MatPlus -> constructn e es mk_MatPlus (* () *)
+      | ListPlus -> constructn e es mk_ListPlus
       end
     | V _
     | Cnst _ -> reg_constr e e
@@ -246,6 +252,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Fq           -> DeducField.solve_fq, equal_ty ty
       | G _          -> DeducGroup.solve_group emaps, fun t -> is_G t || is_Fq t
       | Mat _        -> DeducMat.solve_mat, fun t -> is_Mat t 
+      | List _       -> failwith "unimp"
       | TySym _ | Prod _ | Int -> assert false
     in
     let k,u = Se.partition is_in subexprs in

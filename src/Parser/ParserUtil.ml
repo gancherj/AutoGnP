@@ -60,6 +60,7 @@ let ty_of_parse_ty ts pty =
     | Prod(pts) -> T.mk_Prod (L.map go pts)
     | BS(s)     -> T.mk_BS(create_lenvar ts s)
     | Mat(a,b)  -> T.mk_Mat (create_dimvar ts a) (create_dimvar ts b)
+    | List(d,t) -> T.mk_List (create_dimvar ts d) (go t)
     | TySym(s)  ->
        (try
           let ts = Mstring.find s ts.ts_tydecls in
@@ -173,6 +174,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
             begin match e1.E.e_ty.T.ty_node with
             | T.Fq -> E.mk_FPlus [e1; e2]
             | T.Mat _ -> E.mk_MatPlus [e1; e2] 
+            | T.List _ -> E.mk_ListPlus [e1; e2]
             | _     -> tacerror "type error in addition of %a + %a" EU.pp_expr e1 EU.pp_expr e2
             end
     | Minus(e1,e2)   -> 
@@ -229,6 +231,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       | T.Fq  -> E.mk_FMult [e1;e2]
       | T.G _ -> E.mk_GMult [e1;e2]
       | T.Mat _ -> E.mk_MatMult e1 e2
+      | T.List _ -> E.mk_ListMult e1 e2
       | _     -> tacerror "type error in multiplication of %a / %a" EU.pp_expr e1 EU.pp_expr e2
       end
   in
@@ -336,7 +339,8 @@ let gcmd_of_parse_gcmd (vmap : GU.vmap) ts gc =
       let vts = L.combine vs tys in
       let vs = L.map (fun (v,t) -> create_var vmap ts Unqual v t) vts in
       G.GCall(vs, asym, e, os)
-    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.TySym _ | Type.Mat _)
+    | (Type.BS _|Type.Bool|Type.G _|Type.Fq|Type.Int|Type.TySym _ | Type.Mat
+    _|Type.List _)
       , ([] | _ :: _ :: _) ->
       tacerror
         "Parser: wrong argument for adversary return value, expected one variable (type %a), got %i"
