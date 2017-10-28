@@ -118,13 +118,13 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | ListMult
   | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat |
   MatSplitLeft | MatSplitRight -> false
+  | ListOf | ListOp _ -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
-  | Xor | Land | Lor | GMult | MatPlus | ListPlus -> false
+  | Xor | Land | Lor | GMult | MatPlus | ListNop _ -> false
 
 let is_field_exp e = match e.e_node with
   | Cnst(FNat _) -> true
@@ -278,8 +278,10 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_bin (notsep above && above<>Infix(MatConcat,0)) MatConcat "@ || " a b
   | MatMinus, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
-  | ListMult, [a;b] ->
-    pp_bin (notsep above && above<>Infix(ListMult,0)) ListMult "@ * " a b
+  | ListOp MatMult, [a;b] ->
+    pp_bin (notsep above && above<>Infix(ListOp MatMult,0)) (ListOp MatMult) "@ * " a b
+  | ListOf, [a] ->
+    pp_prefix ListOf "[" "]" a
   | MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | MatOpp,   [a]   ->
@@ -336,7 +338,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatMinus | MatConcat), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
   | MatMult, ([] | [_] | _::_::_) 
-  | ListMult, ([] | [_] | _::_::_) ->
+  | _ ->
     failwith "pp_op: invalid expression"
 
 (** Pretty-prints n-ary operator assuming that
@@ -346,7 +348,7 @@ and pp_nop_p ~qual above fmt (op,es) =
     pp_maybe_paren hv p (pp_list ops (pp_exp_p ~qual (NInfix(op)))) fmt es
   in
   match op with
-  | ListPlus -> pp_nary true ListPlus "@ + " (notsep above)
+  | ListNop MatPlus -> pp_nary true (ListNop MatPlus) "@ + " (notsep above)
   | MatPlus -> pp_nary true MatPlus "@ + " (notsep above)
   | GMult  -> pp_nary true GMult  "@ * "   (notsep above)
   | FPlus  -> pp_nary true FPlus  "@ + "   (notsep above)

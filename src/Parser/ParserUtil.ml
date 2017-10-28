@@ -174,7 +174,10 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
             begin match e1.E.e_ty.T.ty_node with
             | T.Fq -> E.mk_FPlus [e1; e2]
             | T.Mat _ -> E.mk_MatPlus [e1; e2] 
-            | T.List _ -> E.mk_ListPlus [e1; e2]
+            | T.List (_, t) -> begin match t.T.ty_node with 
+                               | T.Mat _ -> E.mk_ListNop E.MatPlus [e1; e2] 
+                               | _ -> tacerror "type error in addition of %a + %a" EU.pp_expr e1 EU.pp_expr e2
+                               end
             | _     -> tacerror "type error in addition of %a + %a" EU.pp_expr e1 EU.pp_expr e2
             end
     | Minus(e1,e2)   -> 
@@ -231,7 +234,10 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
       | T.Fq  -> E.mk_FMult [e1;e2]
       | T.G _ -> E.mk_GMult [e1;e2]
       | T.Mat _ -> E.mk_MatMult e1 e2
-      | T.List _ -> E.mk_ListMult e1 e2
+      | T.List (_, t) -> begin match t.T.ty_node with
+                         | T.Mat _ -> E.mk_ListOp E.MatMult [e1;e2]
+                         | _ -> tacerror "type error in multiplication of %a / %a" EU.pp_expr e1 EU.pp_expr e2
+                         end
       | _     -> tacerror "type error in multiplication of %a / %a" EU.pp_expr e1 EU.pp_expr e2
       end
   in

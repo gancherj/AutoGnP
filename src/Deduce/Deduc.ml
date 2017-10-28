@@ -46,7 +46,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FOpp, _             -> add_known e (mk_FOpp inv)
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
-      | ListMult, _         -> failwith "unimp"
+      | ListOp _, _         -> failwith "unimp"
+      | ListOf , _         -> failwith "unimp"
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
       | MatConcat, [e1; e2] -> add_known e1 (mk_MatSplitLeft inv); add_known e2
@@ -139,8 +140,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
               add_sub e; List.iter (register_subexprs true) es 
       
-      | ListMult -> 
+      | ListOp _ | ListOf -> 
               add_sub e; List.iter (register_subexprs true) es 
+
       (*
       | FDiv ->
         FIXME: not the case, check where/why we need this
@@ -156,7 +158,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         add_sub_solver e; List.iter (register_subexprs false) es
       | MatPlus ->
         add_sub e; List.iter (register_subexprs true) es
-      | ListPlus ->
+      | ListNop _ ->
         add_sub e; List.iter (register_subexprs true) es
       end
       (* normal form is g^log(v) and must have been already added *)
@@ -236,7 +238,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
       | MatPlus -> constructn e es mk_MatPlus (* () *)
-      | ListPlus -> constructn e es mk_ListPlus
+      | ListNop n -> constructn e es (mk_ListNop n)
       end
     | V _
     | Cnst _ -> reg_constr e e

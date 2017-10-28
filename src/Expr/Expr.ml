@@ -78,7 +78,8 @@ type op =
   | MatConcat
   | MatSplitLeft
   | MatSplitRight
-  | ListMult
+  | ListOp of op
+  | ListOf
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -88,7 +89,7 @@ type nop =
   | Xor        (* Xor of bitstrings *)
   | Land       (* logical and *)
   | Lor        (* logical or *)
-  | ListPlus
+  | ListNop of nop
 
 type binding = VarSym.t list * Olist.t
 
@@ -120,7 +121,7 @@ let cnst_hash = function
   | MatZero-> 6
   | MatId -> 7
 
-let op_hash = function
+let rec op_hash = function
   | GExp gv        -> hcomb 1 (Groupvar.hash gv)
   | GLog gv        -> hcomb 2 (Groupvar.hash gv)
   | GInv           -> 3
@@ -129,7 +130,8 @@ let op_hash = function
   | FInv           -> 6
   | FDiv           -> 7
   | Eq             -> 8
-  | ListMult       -> 24
+  | ListOp o       -> hcomb 24 (op_hash o)
+  | ListOf         -> 25
   | MatMult        -> 18
   | MatOpp         -> 19
   | MatMinus       -> 21
@@ -145,7 +147,7 @@ let op_hash = function
   | MapLookup ms   -> hcomb 16 (MapSym.hash ms)
   | MapIndom ms    -> hcomb 17 (MapSym.hash ms)
 
-let nop_hash = function
+let rec nop_hash = function
   | FPlus  -> 1
   | FMult  -> 2
   | MatPlus -> 7
@@ -153,7 +155,7 @@ let nop_hash = function
   | Land   -> 4
   | Lor    -> 6
   | GMult  -> 5
-  | ListPlus -> 8
+  | ListNop n -> hcomb 8 (nop_hash n)
 
 let quant_hash= function
   | All    -> 1
@@ -355,12 +357,18 @@ let mk_MapIndom h e =
   ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapIndom";
   mk_App (MapIndom(h)) [e] mk_Bool
 
-let mk_ListMult a b =
-    ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
-    let (d1, t1) = list_get_ty a.e_ty in
-    let (_, t2) = list_get_ty b.e_ty in
-    let (n,m) = matmult_get_dim t1 t2 in
-    mk_App (ListMult) [a;b] (mk_List d1 (mk_Mat n m))
+let mk_ListOp op es =
+    match op,es with
+    | MatMult, [a;b] -> 
+        ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
+        let (d1, t1) = list_get_ty a.e_ty in
+        let (_, t2) = list_get_ty b.e_ty in
+        let (n,m) = matmult_get_dim t1 t2 in
+        mk_App (ListOp MatMult) [a;b] (mk_List d1 (mk_Mat n m))
+    | _ -> failwith "unsupported list op"
+
+let mk_ListOf d e =
+    mk_App (ListOf) [e] (mk_List d e.e_ty)
 
 
 let mk_MatMult a b =
@@ -423,19 +431,18 @@ let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
-let mk_ListPlus es =
-    match es with
-    | e :: _ ->
+let mk_ListNop nop es =
+    match nop, es with
+    | MatPlus, e :: _ ->
         begin match e.e_ty.ty_node with
         | List (d,t) -> 
                 begin match t.ty_node with
-                | Mat (n,m) -> mk_nary "mk_ListPlus" true ListPlus es (mk_List d (mk_Mat n m))
-                | _ -> failwith (F.sprintf "Addition of lists only supported for
-                matrices")
+                | Mat (n,m) -> mk_nary "mk_ListPlus" true (ListNop MatPlus) es (mk_List d (mk_Mat n m))
+                | _ -> failwith (F.sprintf "Type error in listplus")
                 end
-        | _ -> failwith (F.sprintf "Bad listplus")
+        | _ -> failwith (F.sprintf "Type error in listplus")
         end
-    | _ -> failwith (F.sprintf "empty listplus")
+    | _ -> failwith (F.sprintf "Unrecognized list nop")
 
 let mk_MatPlus es =
     match es with
@@ -488,7 +495,7 @@ let mk_Nary op es =
   | Land  -> mk_Land  es
   | Lor   -> mk_Lor  es
   | GMult -> mk_GMult es
-  | ListPlus -> mk_ListPlus es
+  | ListNop nop -> mk_ListNop nop es
 
 (* *** Remaining mk functions *)
 
