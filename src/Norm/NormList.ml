@@ -18,7 +18,7 @@ let rec rem_first_eq e xs = match xs with
 
 let is_zero e = match e.e_node with Cnst(ListOf MatZero) -> true | _ -> false
 
-let is_opp_sym e e' = (e = (mk_ListOp MatOpp [e'])) || ((mk_ListOp MatOpp [e]) = e')
+let is_opp_sym e e' = (e = (mk_ListMatOpp e')) || ((mk_ListMatOpp e) = e')
 
 let contains_op e es = List.exists (fun x -> is_opp_sym e x) es
 
@@ -87,8 +87,8 @@ dim(c) = dim(d) *)
 let combine_concatpair e1 e2 =
     match e1.e_node, e2.e_node with
     | App(ListOp MatConcat, [e11;e12]), App(ListOp MatConcat, [e21;e22]) ->
-            mk_ListOp MatConcat  [(mk_ListNop MatPlus [e11; e21]); (mk_ListNop
-            MatPlus [e12;e22])]
+            mk_ListMatConcat  (mk_ListNop MatPlus [e11; e21]) (mk_ListNop
+            MatPlus [e12;e22])
     | _ -> assert false
     
 
@@ -160,8 +160,8 @@ and rewrite_list_nop nop es    =
 and rewrite_mult e e'   =
     match e.e_node, e'.e_node with
     (* e * (e1 * e2) -> (e * e1) * e2 *)
-    | _, App(ListOp MatMult, [e1;e2]) -> (mk_ListOp MatMult [(mk_ListOp MatMult
-    [e; e1]) ;e2])
+    | _, App(ListOp MatMult, [e1;e2]) -> (mk_ListMatMult (mk_ListMatMult
+    e e1) e2)
     (* I * e' -> e' *)
     | Cnst(ListOf MatId), _ -> e'
     (* e * I -> e *)
@@ -173,22 +173,20 @@ and rewrite_mult e e'   =
             mk_ListOfMatZero ln a d
     (* -e * -e' -> e * e'
      * -e * e' = e * -e' = - (e * e') *)
-    | App(ListOp MatOpp,[e1]), App(ListOp MatOpp,[e'1]) -> (mk_ListOp MatMult
-    [e1 ;e'1])
-    | App(ListOp MatOpp,[e1]), _ -> (mk_ListOp MatOpp [(mk_ListOp MatMult [e1;
-    e'])])
-    | _, App(ListOp MatOpp, [e'1]) -> (mk_ListOp MatOpp [(mk_ListOp MatMult [e;
-    e'1])])
+    | App(ListOp MatOpp,[e1]), App(ListOp MatOpp,[e'1]) -> (mk_ListMatMult
+    e1 e'1)
+    | App(ListOp MatOpp,[e1]), _ -> (mk_ListMatOpp (mk_ListMatMult e1 e'))
+    | _, App(ListOp MatOpp, [e'1]) -> (mk_ListMatOpp (mk_ListMatMult e e'1))
     (* e * e'1||e'2 -> e*e'1 || e*e'2 *)
-    | _, App(ListOp MatConcat, [e'1;e'2]) -> (mk_ListOp MatConcat [ (mk_ListOp
-    MatMult [e; e'1]); (mk_ListOp MatMult [e;e'2])])
+    | _, App(ListOp MatConcat, [e'1;e'2]) -> (mk_ListMatConcat  (mk_ListMatMult
+    e e'1) (mk_ListMatMult e e'2))
     (* (a+b) * c -> a * c + b * c *)
     | Nary(ListNop MatPlus, es), _ -> (mk_ListNop MatPlus (
-        List.map (fun x -> (mk_ListOp MatMult [x;e'])) es))
+        List.map (fun x -> (mk_ListMatMult x e')) es))
     (* a * (b + c) -> a * b + a * c *)
     | _, Nary(ListNop MatPlus, e's) -> (mk_ListNop MatPlus (
-        List.map (fun x' -> (mk_ListOp MatMult [e;x'])) e's))
-    | _, _ -> mk_ListOp MatMult [e; e']
+        List.map (fun x' -> (mk_ListMatMult e x')) e's))
+    | _, _ -> mk_ListMatMult  e  e' 
 
 
 and rewrite_opp e    = 
@@ -196,8 +194,8 @@ and rewrite_opp e    =
     (* --e -> e *)
     | App(ListOp MatOpp, [e']) -> e'
     (* -(a+b) -> -a + -b *)
-    | Nary(ListNop MatPlus, es) -> (mk_ListNop MatPlus (List.map mk_MatOpp es))
-    | _ -> mk_ListOp MatOpp [e]
+    | Nary(ListNop MatPlus, es) -> (mk_ListNop MatPlus (List.map mk_ListMatOpp es))
+    | _ -> mk_ListMatOpp e
 
     (* tr (a * b) -> (tr b) * (tr a) 
      * tr (a + b) -> tr a + tr b
@@ -207,19 +205,19 @@ and rewrite_opp e    =
 and rewrite_trans e    =
     match e.e_node with
     (* tr (a * b) = tr b * tr a *)
-    | App(ListOp MatMult, [a;b]) ->  (mk_ListOp MatMult [(mk_ListOp MatTrans [b])
-    ;(mk_ListOp MatTrans [a])])
+    | App(ListOp MatMult, [a;b]) ->  (mk_ListMatMult  (mk_ListMatTrans  b )
+    (mk_ListMatTrans a))
     (* tr (a - b) = tr a - tr b *)
-    | App(ListOp MatMinus, [a;b]) ->  (mk_ListOp MatMinus [(mk_ListOp MatTrans
-    [a]) ;(mk_ListOp MatTrans [b])])
+    | App(ListOp MatMinus, [a;b]) ->  (mk_ListMatMinus (mk_ListMatTrans a)
+    (mk_ListMatTrans b))
     (* tr (-a) -> - (tr a *)
-    | App(ListOp MatOpp, [a]) ->  (mk_ListOp MatOpp [(mk_ListOp MatTrans [a])])
+    | App(ListOp MatOpp, [a]) ->  (mk_ListMatOpp (mk_ListMatTrans a))
     (* tr (a + b) -> tr a + tr b *)
     | Nary(ListNop MatPlus, es) ->  (mk_ListNop MatPlus (
-                            List.map (fun x -> mk_MatTrans x) es))
+                            List.map (fun x -> mk_ListMatTrans x) es))
     (* tr tr a = a *)
     | App(ListOp MatTrans, [a]) ->  a
-    | _ -> mk_ListOp MatTrans [e]
+    | _ -> mk_ListMatTrans e
 
 and rewrite_plus es    = 
 
@@ -243,7 +241,7 @@ and rewrite_plus es    =
 
 and rewrite_minus e1 e2    =
     (* a - b -> a + (-b) *)
-    (mk_ListNop MatPlus [e1; mk_ListOp MatOpp [e2]])
+    (mk_ListNop MatPlus [e1; mk_ListMatOpp e2])
 
 
 
@@ -258,7 +256,7 @@ and rewrite_concat e1 e2   =
         let (pairs, es1, es2) = rem_splitpairs e1s e2s in
         
         (match pairs with
-        | [] -> mk_ListOp MatConcat [e1 ; e2]
+        | [] -> mk_ListMatConcat e1  e2
         | _ ->
          (mk_ListNop MatPlus (pairs @ [
              mk_ListOp MatConcat [(mk_ListMatPlus_safe es1 t1); (mk_ListMatPlus_safe es2
@@ -266,7 +264,7 @@ and rewrite_concat e1 e2   =
     (* (sl a || sr a) -> a *)
     | App(ListOp MatSplitLeft, [a]), App(ListOp MatSplitRight, [b]) ->
         if a=b then a
-        else mk_ListOp MatConcat [e1; e2]
+        else mk_ListMatConcat e1 e2
     (* 0 || 0 -> 0 *)
     | Cnst(ListOf MatZero), Cnst(ListOf MatZero) ->
         let ((n,m),(_,m')) = (get_mat_mdims e1.e_ty, get_mat_mdims e2.e_ty) in
@@ -274,22 +272,21 @@ and rewrite_concat e1 e2   =
         mk_ListOfMatZero a n (Type.MDPlus (m,m'))
     (* -a || -b -> - (a || b) *)
     | App(ListOp MatOpp,[a]), App(ListOp MatOpp, [b]) ->
-            (mk_ListOp MatOpp [(mk_ListOp MatConcat [a;b])])
-    | _ -> mk_ListOp MatConcat [e1 ;e2]
+            (mk_ListMatOpp (mk_ListMatConcat a b))
+    | _ -> mk_ListMatConcat e1 e2
 
 and rewrite_split wh e   =
-    let sp_f = if wh then mk_ListOp MatSplitRight else mk_ListOp MatSplitLeft in
+    let sp_f = if wh then mk_ListMatSplitRight else mk_ListMatSplitLeft in
     match e.e_node with
     (* split (-a) -> - (sp a) *)
-    | App(ListOp MatOpp, [a]) -> mk_ListOp MatOpp [(sp_f [a])]
+    | App(ListOp MatOpp, [a]) -> mk_ListMatOpp (sp_f a)
     (* sp (a + b) -> sp a + sp b *)
-    | Nary(ListNop MatPlus,es) -> (mk_ListNop MatPlus (List.map sp_f (List.map (fun e -> [e])
-    es)))
+    | Nary(ListNop MatPlus,es) -> (mk_ListNop MatPlus (List.map sp_f  es))
     (* sp (a || b) -> (a or b) *)
     | App(ListOp MatConcat,[a;b]) -> if wh then b else a
     (* sp (a * b) -> a * (sp b) *)
-    | App(ListOp MatMult, [a;b]) -> (mk_ListOp MatMult [a; (sp_f [b])])
-    | _ -> sp_f [e]
+    | App(ListOp MatMult, [a;b]) -> (mk_ListMatMult a (sp_f b))
+    | _ -> sp_f e
 
 and rewrite_splitleft e   = rewrite_split false e   
 

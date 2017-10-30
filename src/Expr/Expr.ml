@@ -382,6 +382,13 @@ let mk_ListOp op es =
     | _ -> failwith "unsupported list op"
 
 
+let mk_ListMatMult e1 e2 = mk_ListOp MatMult [e1;e2]
+let mk_ListMatMinus e1 e2 = mk_ListOp MatMinus [e1;e2]
+let mk_ListMatConcat e1 e2 = mk_ListOp MatConcat [e1;e2]
+let mk_ListMatTrans e1 = mk_ListOp MatTrans [e1]
+let mk_ListMatOpp e1 = mk_ListOp MatOpp [e1]
+let mk_ListMatSplitLeft e1 = mk_ListOp MatSplitLeft [e1]
+let mk_ListMatSplitRight e1 = mk_ListOp MatSplitRight [e1]
 
 let mk_MatMult a b =
     ensure_matmult_compat a.e_ty b.e_ty a (Some b) "mk_MatMult";
