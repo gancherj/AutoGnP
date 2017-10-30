@@ -47,7 +47,6 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
       | ListOp _, _         -> failwith "unimp"
-      | ListOf , _         -> failwith "unimp"
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
       | MatConcat, [e1; e2] -> add_known e1 (mk_MatSplitLeft inv); add_known e2
@@ -140,7 +139,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
               add_sub e; List.iter (register_subexprs true) es 
       
-      | ListOp _ | ListOf -> 
+      | ListOp _ -> 
               add_sub e; List.iter (register_subexprs true) es 
 
       (*

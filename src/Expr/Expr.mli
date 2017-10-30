@@ -41,6 +41,7 @@ type cnst =
   | B of bool   (* boolean value *)
   | MatZero
   | MatId
+  | ListOf of cnst
 
 type op =
   (* bilinear groups *)
@@ -70,7 +71,6 @@ type op =
   | MatSplitLeft
   | MatSplitRight
   | ListOp of op
-  | ListOf
 
 type nop =
   | GMult  (* multiplication in G (type defines group) *)
@@ -124,6 +124,7 @@ exception TypeError of (ty *  ty * expr * expr option * string)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
 val ensure_mat_ty : Type.ty -> Type.mdim * Type.mdim
+val get_mat_mdims : Type.ty -> Type.mdim * Type.mdim
 
 (* *** Constant mk functions *)
 
@@ -146,6 +147,7 @@ val mk_FOne        : expr
 val mk_FZ          : expr
 val mk_Z           : Lenvar.id -> expr
 val mk_MatZero     : mdim -> mdim -> expr
+val mk_ListOfMatZero      : mdim -> mdim -> mdim -> expr
 val mk_MatId      : mdim -> mdim -> expr
 val mk_B           : bool -> expr
 val mk_True        : expr
@@ -163,7 +165,6 @@ val mk_Eq          : expr -> expr -> expr
 val mk_Not         : expr -> expr
 val mk_Ifte        : expr -> expr -> expr -> expr
 val mk_ListOp      : op -> expr list -> expr
-val mk_ListOf      : Type.mdim -> expr -> expr
 val mk_MatMult     : expr -> expr -> expr
 val mk_MatMinus    : expr -> expr -> expr
 val mk_MatTrans    : expr -> expr
@@ -180,6 +181,13 @@ val mk_InEq        : expr -> expr -> expr
 val mk_ListNop     : nop -> expr list -> expr
 val mk_MatPlus     : expr list -> expr
 val mk_MatPlus_safe: expr list -> ty -> expr
+val mk_ListMatPlus_safe: expr list -> ty -> expr
+
+
+(* list forget / lift *)
+val listForgetExprs : expr -> expr
+val listRememberExprs : expr -> expr
+
 (* ** Generic functions on [expr]
  * ----------------------------------------------------------------------- *)
 

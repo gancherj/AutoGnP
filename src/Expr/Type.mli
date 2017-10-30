@@ -46,7 +46,7 @@ val compare_ty : ty -> ty -> int
 
 (* list specific *)
 val listmult_compat_ty : ty -> ty -> bool
-val list_get_ty : ty -> (mdim * ty)
+val get_list_ty : ty -> (mdim * ty)
 
 (* matrix specific *)
 val matmult_compat_ty : ty -> ty -> bool
@@ -81,6 +81,8 @@ val is_BS         : ty -> bool
 val is_Fq	      : ty -> bool
 val is_Prod	      : ty -> bool
 val is_Mat        : ty -> bool
+val is_List       : ty -> bool
+val is_MatList    : ty -> bool
 val is_Mat_splittable : ty -> bool
 val destr_G_exn	      : ty -> Groupvar.id
 val destr_BS_exn      : ty -> Lenvar.id

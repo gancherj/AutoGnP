@@ -102,7 +102,7 @@ let get_split_dim t =
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
 
-let list_get_ty t =
+let get_list_ty t =
     match t.ty_node with
     | List p -> p
     | _ -> assert false
@@ -199,8 +199,18 @@ let is_Prod ty = match ty.ty_node with
   | Prod _ -> true
   | _      -> false
 
+
+let is_List ty = match ty.ty_node with
+  | List _ -> true
+  | _ -> false
+
+
 let is_Mat ty = match ty.ty_node with
   | Mat _ -> true
+  | _ -> false
+
+let is_MatList ty = match ty.ty_node with
+  | List (_, t) -> is_Mat t
   | _ -> false
 
 let is_Mat_splittable ty = match ty.ty_node with

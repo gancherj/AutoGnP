@@ -120,7 +120,7 @@ let is_field_op = function
   | Ifte | Not
   | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat |
   MatSplitLeft | MatSplitRight -> false
-  | ListOf | ListOp _ -> false
+  | ListOp _ -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -131,6 +131,14 @@ let is_field_exp e = match e.e_node with
   | App(o,_)     -> is_field_op o
   | Nary(o,_)    -> is_field_nop o
   | _            -> false
+
+let is_list_op = function
+    | ListOp _ -> true
+    | _ -> false
+
+let is_list_nop = function
+    | ListNop _ -> true
+    | _ -> false
 
 let is_mat_op = function
   | MatMult | MatOpp | MatTrans | MatMinus | MatConcat | MatSplitLeft |
@@ -148,6 +156,11 @@ let is_mat_exp e = match e.e_node with
   | Nary(o,_)-> is_field_nop o
   | _ -> false
 
+let is_list_exp e = match e.e_node with
+  | App(o,_) -> is_list_op o
+  | Nary(o,_) -> is_field_nop o
+  | _ -> false
+ 
 (* ** Pretty printing
  * ----------------------------------------------------------------------- *)
 
@@ -173,6 +186,7 @@ let pp_cnst fmt c ty =
   | B b    -> F.fprintf fmt "%b" b
   | MatZero -> F.fprintf fmt "0%%%a" pp_ty ty
   | MatId  -> F.fprintf fmt "I%%%a" pp_ty ty
+  | ListOf c-> F.fprintf fmt "todo"
 
 (** Constructor above the current expression. *)
 type 'a above =
@@ -280,8 +294,6 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
   | ListOp MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(ListOp MatMult,0)) (ListOp MatMult) "@ * " a b
-  | ListOf, [a] ->
-    pp_prefix ListOf "[" "]" a
   | MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
   | MatOpp,   [a]   ->

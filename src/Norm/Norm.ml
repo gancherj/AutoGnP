@@ -8,6 +8,7 @@ open ExprUtils
 open Syms
 open Util
 open NormMat
+open NormList
 
 let mk_log level = mk_logger "Norm.Norm" level "Norm.ml"
 let _log_i = mk_log Bolt.Level.INFO
@@ -73,6 +74,10 @@ let rec norm_expr ~strong e =
   | Nary(nop, _) when is_field_nop nop -> mk_simpl_field_expr ~strong e
 
   | App(op, _)   when is_field_op op   -> mk_simpl_field_expr ~strong e
+
+  | App(op, _)  when is_list_op op -> mk_simpl_list_expr ~strong e
+
+  | Nary(nop, _) when is_list_nop nop -> mk_simpl_list_expr ~strong e
 
   | Nary(nop, _) when is_mat_nop nop -> mk_simpl_mat_expr ~strong e
 
@@ -171,7 +176,7 @@ and mk_simpl_op ~strong op l =
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
     | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans | MatMinus | MatConcat
-    | MatSplitLeft | MatSplitRight | ListOp _ | ListOf ), _ -> 
+    | MatSplitLeft | MatSplitRight | ListOp _ ), _ -> 
             assert false (* field stuff handled by mk_simpl_field_expr; mat
             stuff handled by mk_simpl_mat_expr*)
 
@@ -272,6 +277,12 @@ and mk_simpl_mat_expr ~strong e =
         if is_mat_exp e then e else norm_expr ~strong e
     in
     norm_mat_expr norm_subexpr e
+
+and mk_simpl_list_expr ~strong e =
+    let norm_subexpr e =
+        if is_list_exp e then e else norm_expr ~strong e
+    in
+    norm_list_expr norm_subexpr e
 
 let norm_expr_weak = norm_expr ~strong:false
 

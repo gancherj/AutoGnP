@@ -50,6 +50,7 @@ type cnst =
   | B of bool   (* boolean value *)
   | MatZero
   | MatId
+  | ListOf of cnst
 
 type op =
   (* bilinear groups *)
@@ -79,7 +80,6 @@ type op =
   | MatSplitLeft
   | MatSplitRight
   | ListOp of op
-  | ListOf
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -113,13 +113,14 @@ let perm_type_hash = function
   | IsInv  -> 1
   | NotInv -> 2
 
-let cnst_hash = function
+let rec cnst_hash = function
   | GGen   -> 1
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
   | B b    -> if b then 4 else 5
   | MatZero-> 6
   | MatId -> 7
+  | ListOf c -> Hashcons.combine 8 (cnst_hash c)
 
 let rec op_hash = function
   | GExp gv        -> hcomb 1 (Groupvar.hash gv)
@@ -131,7 +132,6 @@ let rec op_hash = function
   | FDiv           -> 7
   | Eq             -> 8
   | ListOp o       -> hcomb 24 (op_hash o)
-  | ListOf         -> 25
   | MatMult        -> 18
   | MatOpp         -> 19
   | MatMinus       -> 21
@@ -243,11 +243,17 @@ let ensure_concat_compat ty1 ty2 e1 e2 s =
 
 let ensure_split_compat ty e s =
     ignore (split_compat ty || raise (TypeError(ty, ty, e, None, s)))
- 
-let ensure_mat_ty ty =
+
+let ensure_mat_ty ty = 
     match ty.ty_node with
     | Mat (n,m) -> (n,m)
     | _ -> failwith (fsprintf "Matrix expected: got %a" pp_ty ty)
+
+let rec get_mat_mdims ty =
+    match ty.ty_node with
+    | Mat (n,m) -> (n,m)
+    | List (_, t) -> get_mat_mdims t
+    | _ -> failwith (fsprintf "Matrix or list of matrices expected: got %a" pp_ty ty)
 
 let ensure_ty_G ty s =
   match ty.ty_node with
@@ -277,6 +283,7 @@ let mk_False = mk_B false
 
 let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
 
+let mk_ListOfMatZero a n m = mk_Cnst (ListOf MatZero) (mk_List a (mk_Mat n m))
 
 let mk_MatId n m =
     ensure_mdim_equal n m;
@@ -361,14 +368,19 @@ let mk_ListOp op es =
     match op,es with
     | MatMult, [a;b] -> 
         ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
-        let (d1, t1) = list_get_ty a.e_ty in
-        let (_, t2) = list_get_ty b.e_ty in
+        let (d1, t1) = get_list_ty a.e_ty in
+        let (_, t2) = get_list_ty b.e_ty in
         let (n,m) = matmult_get_dim t1 t2 in
         mk_App (ListOp MatMult) [a;b] (mk_List d1 (mk_Mat n m))
+    | MatOpp, [a] -> 
+            let (d,_) = get_list_ty a.e_ty in
+            let (n,m) = get_mat_mdims a.e_ty in
+            mk_App (ListOp MatOpp) [a] (mk_List d (mk_Mat n m))
+    | MatConcat, _ -> failwith "concat"
+    | MatSplitLeft, _ -> failwith "splitleft"
+    | MatSplitRight, _ -> failwith "splitRight"
     | _ -> failwith "unsupported list op"
 
-let mk_ListOf d e =
-    mk_App (ListOf) [e] (mk_List d e.e_ty)
 
 
 let mk_MatMult a b =
@@ -457,6 +469,10 @@ let mk_MatPlus_safe es ty = match es with
     | [] -> let (n,m) = ensure_mat_ty ty in mk_MatZero n m
     | _ -> mk_MatPlus es
 
+let mk_ListMatPlus_safe es ty = match es with
+    | [] -> let (n,m) = get_mat_mdims ty in let (a,_) = get_list_ty ty in mk_ListOfMatZero a n m
+    | _ -> mk_ListNop MatPlus es
+
 let valid_Xor_type ty =
   let rec valid ty =
     match ty.ty_node with
@@ -529,6 +545,41 @@ let mk_Proj i e =
 
 let mk_InEq a b =
   mk_Not (mk_Eq a b)
+
+
+let listForgetOp op =  match op with
+    | ListOp o -> o
+    | o -> o
+
+let listForgetNop nop =  match nop with
+    | ListNop o -> o
+    | o -> o
+
+let listForgetExp e = 
+    let {e_node = enode; e_ty = ety; e_tag = etag} = e in
+    let new_enode = match enode with
+                    | App (op, es) -> App (listForgetOp op, es)
+                    | Nary (nop, es) -> Nary (listForgetNop nop, es)
+                    | _ -> enode in
+    {e_node = new_enode; e_ty = ety; e_tag = etag}
+
+
+
+let listRememberOp op = ListOp op
+let listRememberNop nop = ListNop nop
+
+let listRememberExp e = 
+    let {e_node = enode; e_ty = ety; e_tag = etag} = e in
+    let new_enode = match ety.ty_node, enode with
+                    | List _, App (op, es) -> App (listRememberOp op, es)
+                    | List _, Nary (op, es) -> Nary (listRememberNop op, es)
+                    | _, _ -> enode in
+    {e_node = new_enode; e_ty = ety; e_tag = etag}
+
+
+
+
+
 
 (* ** Generic functions on expressions
  * ----------------------------------------------------------------------- *)
@@ -658,3 +709,7 @@ let e_replace e1 e2 =
 
 let e_subst s =
   e_map_top (fun e -> Me.find e s)
+
+
+let listForgetExprs = e_map listForgetExp
+let listRememberExprs = e_map listRememberExp

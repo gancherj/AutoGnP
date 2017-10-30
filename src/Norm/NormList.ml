@@ -3,6 +3,7 @@ open Type
 open ExprUtils
 open Util
 
+
 let mk_log level = mk_logger "Deduce.Deduc" level "Deduc.ml"
 
 let rec rem_first_occ f xs = match xs with
@@ -15,9 +16,9 @@ let rec rem_first_eq e xs = match xs with
 
 (* find instances of e and -e in es, and remove the pair if found *)
 
-let is_zero e = match e.e_node with Cnst(MatZero) -> true | _ -> false
+let is_zero e = match e.e_node with Cnst(ListOf MatZero) -> true | _ -> false
 
-let is_opp_sym e e' = (e = (mk_MatOpp e')) || ((mk_MatOpp e) = e')
+let is_opp_sym e e' = (e = (mk_ListOp MatOpp [e'])) || ((mk_ListOp MatOpp [e]) = e')
 
 let contains_op e es = List.exists (fun x -> is_opp_sym e x) es
 
@@ -37,16 +38,16 @@ let remove_opps es =
 
 
 
-let is_splitleft e = match e.e_node with App(MatSplitLeft, _) -> true | _ -> false
+let is_splitleft e = match e.e_node with App(ListOp MatSplitLeft, _) -> true | _ -> false
 
 let extract_splitleft e = match e.e_node with 
-    | App(MatSplitLeft, [e]) -> e 
+    | App(ListOp MatSplitLeft, [e]) -> e 
     | _ -> assert false
 
-let is_splitright e = match e.e_node with App(MatSplitRight, _) -> true | _ -> false
+let is_splitright e = match e.e_node with App(ListOp MatSplitRight, _) -> true | _ -> false
 
 let extract_splitright e = match e.e_node with 
-    | App(MatSplitRight, [e]) -> e 
+    | App(ListOp MatSplitRight, [e]) -> e 
     | _ -> assert false
 
 let is_splitpair sl sr = (extract_splitleft sl) = (extract_splitright sr)
@@ -76,7 +77,7 @@ let rem_splitpairs es1 es2 =
 let is_concatpair e1 e2 = (* if e1 = a||b, e2 = c||d, and dim(a) = dim(b),
 dim(c) = dim(d) *)
     match e1.e_node, e2.e_node with
-    | App(MatConcat, [e11;e12]), App(MatConcat, [e21;e22]) ->
+    | App(ListOp MatConcat, [e11;e12]), App(ListOp MatConcat, [e21;e22]) ->
     let ((n11,m11), (n12,m12),(n21,m21),(n22,m22)) = (get_mat_mdims e11.e_ty,
     get_mat_mdims e12.e_ty, get_mat_mdims e21.e_ty, get_mat_mdims e22.e_ty) in
     mdim_equal n11 n21 && mdim_equal m11 m21 && mdim_equal n12 n22 && mdim_equal
@@ -85,8 +86,9 @@ dim(c) = dim(d) *)
 
 let combine_concatpair e1 e2 =
     match e1.e_node, e2.e_node with
-    | App(MatConcat, [e11;e12]), App(MatConcat, [e21;e22]) ->
-            mk_MatConcat (mk_MatPlus [e11; e21]) (mk_MatPlus [e12;e22])
+    | App(ListOp MatConcat, [e11;e12]), App(ListOp MatConcat, [e21;e22]) ->
+            mk_ListOp MatConcat  [(mk_ListNop MatPlus [e11; e21]); (mk_ListNop
+            MatPlus [e12;e22])]
     | _ -> assert false
     
 
@@ -107,18 +109,18 @@ let rec combine_concats cs =
             let (c', cs') = combine_concats_aux c cs in
             c' :: (combine_concats cs')
 
-let is_plus e = match e.e_node with Nary(MatPlus, _) -> true | _ -> false
+let is_plus e = match e.e_node with Nary(ListNop MatPlus, _) -> true | _ -> false
 
 let extract_plus e = match e.e_node with 
-    | Nary(MatPlus, es) -> es
+    | Nary(ListNop MatPlus, es) -> es
     | _ -> assert false
 
 
-let rec norm_mat_expr nftop  e =
-    let nf = norm_mat_expr nftop in 
+let rec norm_list_expr nftop  e =
+    let nf = norm_list_expr nftop in 
     let ans = (match e.e_node with
-    | App(op,es) when is_mat_op op -> rewrite_mat_op op (List.map nf es) 
-    | Nary(nop, es) when is_mat_nop nop -> rewrite_mat_nop nop (List.map nf es)  
+    | App(op,es) when is_list_op op -> rewrite_list_op op (List.map nf es) 
+    | Nary(nop, es) when is_list_nop nop -> rewrite_list_nop nop (List.map nf es)  
     | _ -> nftop e) in
     if (equal_expr ans e) then
         ans
@@ -127,21 +129,21 @@ let rec norm_mat_expr nftop  e =
     
 
 
-and rewrite_mat_op op es  =
+and rewrite_list_op op es  =
     match op, es with
-    | MatMult, [e1;e2] -> rewrite_mult e1 e2   
-    | MatOpp, [e1] -> rewrite_opp e1   
-    | MatTrans, [e1] -> rewrite_trans e1   
-    | MatMinus, [e1;e2] -> rewrite_minus e1 e2   
-    | MatConcat, [e1;e2] -> rewrite_concat e1 e2   
-    | MatSplitLeft, [e1] -> rewrite_splitleft e1   
-    | MatSplitRight, [e1] -> rewrite_splitright e1   
+    | ListOp MatMult, [e1;e2] -> rewrite_mult e1 e2   
+    | ListOp MatOpp, [e1] -> rewrite_opp e1   
+    | ListOp MatTrans, [e1] -> rewrite_trans e1   
+    | ListOp MatMinus, [e1;e2] -> rewrite_minus e1 e2   
+    | ListOp MatConcat, [e1;e2] -> rewrite_concat e1 e2   
+    | ListOp MatSplitLeft, [e1] -> rewrite_splitleft e1   
+    | ListOp MatSplitRight, [e1] -> rewrite_splitright e1   
     | _, _ -> assert false 
 
 
-and rewrite_mat_nop nop es    =
+and rewrite_list_nop nop es    =
     match nop with
-    | MatPlus -> rewrite_plus es   
+    | ListNop MatPlus -> rewrite_plus es   
     | _ -> assert false
 
 (* Normalization of operators: *)
@@ -158,39 +160,44 @@ and rewrite_mat_nop nop es    =
 and rewrite_mult e e'   =
     match e.e_node, e'.e_node with
     (* e * (e1 * e2) -> (e * e1) * e2 *)
-    | _, App(MatMult, [e1;e2]) -> (mk_MatMult (mk_MatMult e e1) e2)
+    | _, App(ListOp MatMult, [e1;e2]) -> (mk_ListOp MatMult [(mk_ListOp MatMult
+    [e; e1]) ;e2])
     (* I * e' -> e' *)
-    | Cnst(MatId), _ -> e'
+    | Cnst(ListOf MatId), _ -> e'
     (* e * I -> e *)
-    | _, Cnst(MatId) -> e
+    | _, Cnst(ListOf MatId) -> e
     (* 0 * e = e * 0 = 0 *)
-    | Cnst(MatZero), _ | _, Cnst(MatZero) -> 
+    | Cnst(ListOf MatZero), _ | _, Cnst(ListOf MatZero) -> 
             let ((a,_),(_,d)) = (get_mat_mdims e.e_ty, get_mat_mdims e'.e_ty) in
-            mk_MatZero a d
+            let (ln, _) = get_list_ty e.e_ty in
+            mk_ListOfMatZero ln a d
     (* -e * -e' -> e * e'
      * -e * e' = e * -e' = - (e * e') *)
-    | App(MatOpp,[e1]), App(MatOpp,[e'1]) -> (mk_MatMult e1 e'1)
-    | App(MatOpp,[e1]), _ -> (mk_MatOpp (mk_MatMult e1 e'))
-    | _, App(MatOpp, [e'1]) -> (mk_MatOpp (mk_MatMult e e'1))
+    | App(ListOp MatOpp,[e1]), App(ListOp MatOpp,[e'1]) -> (mk_ListOp MatMult
+    [e1 ;e'1])
+    | App(ListOp MatOpp,[e1]), _ -> (mk_ListOp MatOpp [(mk_ListOp MatMult [e1;
+    e'])])
+    | _, App(ListOp MatOpp, [e'1]) -> (mk_ListOp MatOpp [(mk_ListOp MatMult [e;
+    e'1])])
     (* e * e'1||e'2 -> e*e'1 || e*e'2 *)
-    | _, App(MatConcat, [e'1;e'2]) -> (mk_MatConcat (mk_MatMult e e'1)
-    (mk_MatMult e e'2))
+    | _, App(ListOp MatConcat, [e'1;e'2]) -> (mk_ListOp MatConcat [ (mk_ListOp
+    MatMult [e; e'1]); (mk_ListOp MatMult [e;e'2])])
     (* (a+b) * c -> a * c + b * c *)
-    | Nary(MatPlus, es), _ -> (mk_MatPlus (
-                                List.map (fun x -> (mk_MatMult x e')) es))
+    | Nary(ListNop MatPlus, es), _ -> (mk_ListNop MatPlus (
+        List.map (fun x -> (mk_ListOp MatMult [x;e'])) es))
     (* a * (b + c) -> a * b + a * c *)
-    | _, Nary(MatPlus, e's) -> (mk_MatPlus (
-                                List.map (fun x' -> (mk_MatMult e x')) e's))
-    | _, _ -> mk_MatMult e e'
+    | _, Nary(ListNop MatPlus, e's) -> (mk_ListNop MatPlus (
+        List.map (fun x' -> (mk_ListOp MatMult [e;x'])) e's))
+    | _, _ -> mk_ListOp MatMult [e; e']
 
 
 and rewrite_opp e    = 
     match e.e_node with
     (* --e -> e *)
-    | App(MatOpp, [e']) -> e'
+    | App(ListOp MatOpp, [e']) -> e'
     (* -(a+b) -> -a + -b *)
-    | Nary(MatPlus, es) -> (mk_MatPlus (List.map mk_MatOpp es))
-    | _ -> mk_MatOpp e
+    | Nary(ListNop MatPlus, es) -> (mk_ListNop MatPlus (List.map mk_MatOpp es))
+    | _ -> mk_ListOp MatOpp [e]
 
     (* tr (a * b) -> (tr b) * (tr a) 
      * tr (a + b) -> tr a + tr b
@@ -200,17 +207,19 @@ and rewrite_opp e    =
 and rewrite_trans e    =
     match e.e_node with
     (* tr (a * b) = tr b * tr a *)
-    | App(MatMult, [a;b]) ->  (mk_MatMult (mk_MatTrans b) (mk_MatTrans a))
+    | App(ListOp MatMult, [a;b]) ->  (mk_ListOp MatMult [(mk_ListOp MatTrans [b])
+    ;(mk_ListOp MatTrans [a])])
     (* tr (a - b) = tr a - tr b *)
-    | App(MatMinus, [a;b]) ->  (mk_MatMinus (mk_MatTrans a) (mk_MatTrans b))
+    | App(ListOp MatMinus, [a;b]) ->  (mk_ListOp MatMinus [(mk_ListOp MatTrans
+    [a]) ;(mk_ListOp MatTrans [b])])
     (* tr (-a) -> - (tr a *)
-    | App(MatOpp, [a]) ->  (mk_MatOpp (mk_MatTrans a))
+    | App(ListOp MatOpp, [a]) ->  (mk_ListOp MatOpp [(mk_ListOp MatTrans [a])])
     (* tr (a + b) -> tr a + tr b *)
-    | Nary(MatPlus, es) ->  (mk_MatPlus (
+    | Nary(ListNop MatPlus, es) ->  (mk_ListNop MatPlus (
                             List.map (fun x -> mk_MatTrans x) es))
     (* tr tr a = a *)
-    | App(MatTrans, [a]) ->  a
-    | _ -> mk_MatTrans e
+    | App(ListOp MatTrans, [a]) ->  a
+    | _ -> mk_ListOp MatTrans [e]
 
 and rewrite_plus es    = 
 
@@ -227,20 +236,21 @@ and rewrite_plus es    =
     let es' = combine_concats es' in 
 
     let ans = (match (List.length es') with
-    | 0 -> let (n,m) = get_mat_mdims (List.hd es).e_ty in mk_MatZero n m
-    | _ -> mk_MatPlus es') in
+    | 0 -> let (n,m) = get_mat_mdims (List.hd es).e_ty in let (a,_) =
+        get_list_ty (List.hd es).e_ty in mk_ListOfMatZero a n m
+    | _ -> mk_ListNop MatPlus es') in
     ans
 
 and rewrite_minus e1 e2    =
     (* a - b -> a + (-b) *)
-    (mk_MatPlus [e1; mk_MatOpp e2])
+    (mk_ListNop MatPlus [e1; mk_ListOp MatOpp [e2]])
 
 
 
 and rewrite_concat e1 e2   = 
     match e1.e_node, e2.e_node with
     (* (sl a + b + c) || (sr a + d + e) -> a + (b + c) || (d + e) *) 
-    | Nary(MatPlus, e1s), Nary(MatPlus, e2s) ->
+    | Nary(ListNop MatPlus, e1s), Nary(ListNop MatPlus, e2s) ->
         (* find all splitpairs between e1 and e2,
         extract them *)
         let t1 = (List.hd e1s).e_ty in
@@ -248,35 +258,38 @@ and rewrite_concat e1 e2   =
         let (pairs, es1, es2) = rem_splitpairs e1s e2s in
         
         (match pairs with
-        | [] -> mk_MatConcat e1 e2
+        | [] -> mk_ListOp MatConcat [e1 ; e2]
         | _ ->
-         (mk_MatPlus (pairs @ [
-            mk_MatConcat (mk_MatPlus_safe es1 t1) (mk_MatPlus_safe es2 t2)])))
+         (mk_ListNop MatPlus (pairs @ [
+             mk_ListOp MatConcat [(mk_ListMatPlus_safe es1 t1); (mk_ListMatPlus_safe es2
+             t2)]])))
     (* (sl a || sr a) -> a *)
-    | App(MatSplitLeft, [a]), App(MatSplitRight, [b]) ->
+    | App(ListOp MatSplitLeft, [a]), App(ListOp MatSplitRight, [b]) ->
         if a=b then a
-        else mk_MatConcat e1 e2
+        else mk_ListOp MatConcat [e1; e2]
     (* 0 || 0 -> 0 *)
-    | Cnst(MatZero), Cnst(MatZero) ->
+    | Cnst(ListOf MatZero), Cnst(ListOf MatZero) ->
         let ((n,m),(_,m')) = (get_mat_mdims e1.e_ty, get_mat_mdims e2.e_ty) in
-        mk_MatZero n (Type.MDPlus (m,m'))
+        let (a,_) = get_list_ty e1.e_ty in
+        mk_ListOfMatZero a n (Type.MDPlus (m,m'))
     (* -a || -b -> - (a || b) *)
-    | App(MatOpp,[a]), App(MatOpp, [b]) ->
-            (mk_MatOpp (mk_MatConcat a b))
-    | _ -> mk_MatConcat e1 e2
+    | App(ListOp MatOpp,[a]), App(ListOp MatOpp, [b]) ->
+            (mk_ListOp MatOpp [(mk_ListOp MatConcat [a;b])])
+    | _ -> mk_ListOp MatConcat [e1 ;e2]
 
 and rewrite_split wh e   =
-    let sp_f = if wh then mk_MatSplitRight else mk_MatSplitLeft in
+    let sp_f = if wh then mk_ListOp MatSplitRight else mk_ListOp MatSplitLeft in
     match e.e_node with
     (* split (-a) -> - (sp a) *)
-    | App(MatOpp, [a]) -> mk_MatOpp (sp_f a)
+    | App(ListOp MatOpp, [a]) -> mk_ListOp MatOpp [(sp_f [a])]
     (* sp (a + b) -> sp a + sp b *)
-    | Nary(MatPlus,es) -> (mk_MatPlus (List.map sp_f es))
+    | Nary(ListNop MatPlus,es) -> (mk_ListNop MatPlus (List.map sp_f (List.map (fun e -> [e])
+    es)))
     (* sp (a || b) -> (a or b) *)
-    | App(MatConcat,[a;b]) -> if wh then b else a
+    | App(ListOp MatConcat,[a;b]) -> if wh then b else a
     (* sp (a * b) -> a * (sp b) *)
-    | App(MatMult, [a;b]) -> (mk_MatMult a (sp_f b))
-    | _ -> sp_f e
+    | App(ListOp MatMult, [a;b]) -> (mk_ListOp MatMult [a; (sp_f [b])])
+    | _ -> sp_f [e]
 
 and rewrite_splitleft e   = rewrite_split false e   
 
@@ -290,13 +303,13 @@ let rec intersect_plus acc es1 es2 = match es1 with
     (acc', e1 :: es1', es2')
 
 let mk_pl_safe es ty = match es with
-| [] -> let (n,m) = get_mat_mdims ty in mk_MatZero n m
+| [] -> let (n,m) = get_mat_mdims ty in let (a,_) = get_list_ty ty in mk_ListOfMatZero a n m
 | [e] -> e
-| es -> mk_MatPlus es
+| es -> mk_ListNop MatPlus es
 
-let norm_ifte nfo b e1 e2 = (* turn b?e1:e2 into es + b?e1':e2', if e2 and e2 are
+let norm_list_ifte nfo b e1 e2 = (* turn b?e1:e2 into es + b?e1':e2', if e2 and e2 are
 plusses and share things with es *)
-    let nf = norm_mat_expr nfo in
+    let nf = norm_list_expr nfo in
 
     print_string "hi";
     let ty = e1.e_ty in
@@ -308,5 +321,14 @@ plusses and share things with es *)
     if (List.length intersect = 0) then 
         mk_Ifte b e1 e2
     else
-        nf (mk_MatPlus (intersect @ [mk_Ifte b e1'
+        nf (mk_ListNop MatPlus (intersect @ [mk_Ifte b e1'
 e2']))
+
+
+
+
+
+
+
+
+

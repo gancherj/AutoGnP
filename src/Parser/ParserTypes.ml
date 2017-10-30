@@ -36,7 +36,6 @@ type parse_expr =
   | CGen        of string
   | MatZ        of parsedim * parsedim
   | MatI        of parsedim * parsedim
-  | PListOf     of parsedim * parse_expr
   | CFNat       of int
   | Mult        of parse_expr * parse_expr
   | Plus        of parse_expr * parse_expr
