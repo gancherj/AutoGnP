@@ -46,11 +46,14 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FOpp, _             -> add_known e (mk_FOpp inv)
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
-      | ListOp _, _         -> failwith "unimp"
+      | ListOp MatTrans, [e]-> add_known e (mk_ListMatTrans inv)
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
+      | ListOp MatOpp, _           -> add_known e (mk_ListMatOpp inv)
       | MatConcat, [e1; e2] -> add_known e1 (mk_MatSplitLeft inv); add_known e2
       (mk_MatSplitRight inv)
+      | ListOp MatConcat, [e1; e2] -> add_known e1 (mk_ListMatSplitLeft inv);
+      add_known e2 (mk_ListMatSplitRight inv)
       | (FMinus | FDiv), _  -> ()
       | (Eq| Not | Ifte), _ -> ()
       | EMap _, _           -> ()
@@ -218,6 +221,13 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | MatTrans, [e1] -> construct1 e e1 mk_MatTrans
     | MatSplitLeft, [e1] -> construct1 e e1 mk_MatSplitLeft
     | MatSplitRight, [e1] -> construct1 e e1 mk_MatSplitRight
+    | ListOp MatMinus, [e1; e2] -> construct2 e e1 e2 mk_ListMatMinus
+    | ListOp MatMult, [e1; e2] -> construct2 e e1 e2 mk_ListMatMult
+    | ListOp MatConcat, [e1; e2] -> construct2 e e1 e2 mk_ListMatConcat
+    | ListOp MatOpp, [e1] -> construct1 e e1 mk_ListMatOpp
+    | ListOp MatTrans, [e1] -> construct1 e e1 mk_ListMatTrans
+    | ListOp MatSplitLeft, [e1] -> construct1 e e1 mk_ListMatSplitLeft
+    | ListOp MatSplitRight, [e1] -> construct1 e e1 mk_ListMatSplitRight
     | _, _ -> assert false
 
   in

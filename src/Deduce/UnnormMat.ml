@@ -123,6 +123,11 @@ let rec unnorm (e : expr) : expr list =
     | App(MatSplitRight, [a]) ->
         let unnorms = unnorm a in
         e :: List.map mk_MatSplitRight unnorms
+    | App(MatConcat, [a;b]) ->
+        let unnorms = List.map unnorm [a;b] in
+        let ess = rows_of_cols unnorms in
+        let new_es = List.map (fun [x;y] -> mk_MatConcat x y) (([a;b]) :: ess) in
+        e :: new_es
     | _ -> [e]
 
 and unnorm_mult (a : expr) (b : expr) : expr list =
@@ -204,3 +209,21 @@ let expand e depth =
     with
         TypeError (_,_,_,_,s) ->
             print_string s; [e]
+
+
+let add_unary_ eis =
+    let est = List.map (fun ei -> (mk_MatTrans (fst ei), ExprUtils.I (mk_MatTrans
+    (ExprUtils.expr_of_inverter (snd ei))))) eis in
+    let essl = Util.cat_Some (List.map (fun ei ->
+        if Type.split_compat (fst ei).e_ty then Some((mk_MatSplitLeft (fst ei),
+        ExprUtils.I (mk_MatSplitLeft (ExprUtils.expr_of_inverter (snd ei))))) else None) eis)
+    in
+    let essr = Util.cat_Some (List.map (fun ei ->
+        if Type.split_compat (fst ei).e_ty then Some((mk_MatSplitRight (fst ei),
+        ExprUtils.I (mk_MatSplitRight (ExprUtils.expr_of_inverter (snd ei))))) else None) eis)
+    in
+    List.flatten [est; essl; essr]
+
+let rec add_unary depth eis = if depth == 0 then eis else add_unary (depth - 1)
+(add_unary_ eis)
+

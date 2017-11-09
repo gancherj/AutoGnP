@@ -1,0 +1,216 @@
+  (* just used to introduce irrelevant samples *)
+adversary A_dkillnm : () -> Bool.
+assumption [inf] dkill_nm [
+  a <-$ Matrix_{n,m}; b <- A_dkillnm();
+] [ b <- A_dkillnm();].
+
+
+
+operator Chi0 : BS_chir -> Matrix_{m,1}.
+operator Chi1 : BS_chir -> Matrix_{1,1}.
+
+adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
+assumption LWE
+[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chir; chir1 <-$ BS_chir; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
+[ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
+
+
+operator Rinj : BS_rinjr -> Matrix_{m,m}. 
+
+operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
+
+(* TODO i can probably now abstract lhl *)
+adversary Adv_newLHL : (BS_tgr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m}) -> Bool.
+adversary Adv_newLHLchoose : () -> Matrix_{1,m}.
+assumption newLHL
+[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; w <- Adv_newLHLchoose();
+  b <- Adv_newLHL(tgr , TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
+    w * Rinj(rinjr));]
+[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; B <-$ Matrix_{n,m}; w <- Adv_newLHLchoose(); b <- Adv_newLHL(tgr , TrapGen(tgr)#0,B, w * Rinj(rinjr));].
+
+operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
+operator SampleRight : 
+(BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
+operator IdHash : BS_n -> Matrix_{n,n}. 
+
+(* assumption for sample left/right. currently it is somewhat specialized to the way it's used in the scheme. *)
+adversary A_SL_G : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1}) -> Bool.
+adversary A_SL_G1 : () -> BS_n.
+oracle A_SL_O : BS_n -> Matrix_{m+m,1}.
+assumption dec_SL_SR
+[
+  tgrA <-$ BS_tgr;
+  let A = TrapGen(tgrA)#0;
+  let TA = TrapGen(tgrA)#1;
+  rinjr <-$ BS_rinjr;
+  let R = Rinj(rinjr);
+  B <-$ Matrix_{n,m};
+  u <-$ Matrix_{n,1};
+  i' <- A_SL_G1();
+  b <- A_SL_G(A,A*R - IdHash(i') * B,B,u) with
+  A_SL_O(i) = {
+    guard (i <> i');
+    slr <-$ BS_sl;
+    return SampleLeft(slr, A, A*R - IdHash(i') * B + IdHash(i) * B, TA, u);
+    };
+]
+[
+  i' <- A_SL_G1(); 
+  tgr <-$ BS_tgr;
+  A <-$ Matrix_{n,m};
+  rinjr <-$ BS_rinjr;
+  let R = Rinj(rinjr);
+  
+    u <-$ Matrix_{n,1};
+  
+  b <- A_SL_G(A,A*R - IdHash(i') * (TrapGen(tgr)#0),TrapGen(tgr)#0,u) with
+  A_SL_O(i) = {
+    guard (i <> i');
+    slr <-$ BS_sl;
+    return SampleRight(slr, A, (IdHash(i) - IdHash(i')) * TrapGen(tgr)#0, R, TrapGen(tgr)#1, u);
+  };
+  ].
+
+
+adversary Adv1 : () -> BS_n.
+operator Minj : Bool -> Matrix_{1,1}.
+oracle KeyGen : BS_n -> Matrix_{m+m, 1}.
+
+adversary Adv2 : (Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1} * (* public parameters *)
+               Matrix_{1,m+m} * Matrix_{1,1}) (* ciphertext *) -> Bool.
+bound_adv [
+  i' <- Adv1();
+
+  (* public parameter *)
+  tgrA <-$ BS_tgr;
+  let A = TrapGen(tgrA)#0;
+  let TA = TrapGen(tgrA)#1;
+    A1 <-$ Matrix_{n,m};
+    B <-$ Matrix_{n,m};
+    u <-$ Matrix_{n,1};
+
+  (* challenge encryption *)
+    b <-$ Bool;
+  let Hid' = IdHash(i');
+    s <-$ Matrix_{n,1};
+    rinjr <-$ BS_rinjr; let R = Rinj(rinjr);
+    chir0 <-$ BS_chir; 
+    chir1 <-$ BS_chir;
+
+ (* let X = tr (tr Chi0(chir0) || tr Chi1(chir1));*)
+  let e0 = Chi0(chir0); let e1 = Chi1(chir1);
+  (*let e0 = tr sl tr X; let e1 = tr sr tr X;*)
+  let c0 = (tr s) * (A || A1 + Hid' * B) + (tr e0 || (tr e0) * R);
+  let c1 = (tr s) * u + tr e1 + Minj(b);
+  
+    b' <- Adv2 (A, A1, B, u, c0, c1) with
+  KeyGen(id) = {
+    guard (id <> i');
+    slr <-$ BS_sl;
+    return SampleLeft(slr, A, A1 + IdHash(id) * B, TA, u)
+    };
+  
+  (*  b' <- A3(challenge ciphertext of b) with KG oracle *)
+  ] : b = b'.
+  (*norm.*)
+
+  (* H1: rewrite A1 into A*R - Hid'*B  *)
+  move tgrA 1.
+  move rinjr 2.
+
+  move B 1.
+  rnd A1 (A1 -> A1 - IdHash(i') * B) (A1 -> A1 + IdHash(i') * B).
+  (*norm.*)
+  move B 6.
+  unfold u__.
+  rename A1 a1t.
+  abstract 16 A1 a1t.
+  
+  trans* [subst 16 (a1t -> A * R)].
+    LR: norm.
+    R: abstract 3 tt1 ().
+    R: move chir0 4.
+    R: abstract 5 res1 tr Chi0(chir0).
+    R: abstract 6 tt2 (tgrA, TrapGen(tgrA)#0, TrapGen(tgrA)#0 * Rinj(rinjr), res1 * Rinj(rinjr)).
+    R: abstract 15 res2 b = b'.
+    R: subst ((tr (s) * tt2#1 * Rinj(rinjr)) -> (tr (s) * tt2#2)).
+    R: assumption_decisional newLHL -> [tt1 res1] [tt2 res2] z.
+    LR:norm.
+    assumption_decisional! dkill_nm <- z; //.
+    rename a1t zz.
+    rename z a1t.
+    rename zz z.
+    move tgrA 1.
+    move rinjr 2.
+    move z 3.
+    move chir0 4.
+    move i' 5.
+    move B 6.
+    dist_eq.
+  unfold A1.
+  abstract 16 A1 ((A * R) - (IdHash(i') * B)).
+
+  (* set up for invocation *)
+  hybrid (20,1) {
+    let id' = id;
+    guard (id' <> i');
+    slr <-$ BS_sl;
+    let r = SampleLeft(slr, A, A1 + (IdHash(id') * B), TA, u);
+    return r;
+    }.
+    LR: norm.
+    dist_eq.
+    move A 3.
+    move TA 4.
+    move R 6.
+    move B 7.
+    move u 8.
+    move i' 9.
+    abstract 10 tt ().
+    abstract 11 res i'.
+    abstract 12 tt1 (A, A*R - IdHash(res) * B, B, u).  
+    abstract 24 ans (b = b').
+    unfold A1.
+    hybrid (22,1) {
+      let id' = id;
+      guard (id' <> res);
+        slr <-$ BS_sl;
+      let r = SampleLeft(slr, A, A*R - IdHash(res)*B + IdHash(id') * B, TA, u);
+      return r;
+      }.
+          LR: norm.
+      dist_eq.
+      move A 2.
+      move TA 3.
+      move rinjr 4.
+      move R 5.
+      move B 6.
+      move u 7.
+      move tt 9.
+      move a1t 13.
+    assumption_decisional * dec_SL_SR -> [tgrA, tgrA; A,A; TA, TA; rinjr, rinjr; R, R; B,B; u,u; i', res; A_SL_O`slr, KeyGen`slr; b,ans] 8 10 [] 11 23 [22 [(1 1 4 A_SL_O)]].
+   norm. 
+ (* H3: invoke LWE assumption *) 
+ mat_fold 2 4 Au.
+ move Au 1.
+ move s 2.
+   norm. //=.
+ (* need to factor (a || ab) as a * (1 || b) *)
+   move chir0 3.
+   move chir1 4.
+   abstract 5 tt (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
+   abstract 12 ans b=b'.
+   //=.
+   (* TODO fix *)
+   subst ((tr (Chi0(chir0)) + (tr (s) * sl (tt#0))) -> sl tr tt#1).
+   subst ((tr (Chi0(chir0)) * Rinj(rinjr))
+                  + (tr (s) * sl (tt#0) * Rinj(rinjr)) -> (sl tr tt#1) * Rinj(rinjr)).
+   subst (Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (tt#0)) -> Minj(b) + sr tr tt#1).
+   assumption_decisional LWE -> [tt ans] r__.
+ rnd r__ (x -> tr x) (x -> tr x); //.
+ mat_unfold 2; //.
+ move B 8.
+ rnd B (x -> x - Minj(b)) (x -> x + Minj(b)).
+ norm.
+ indep!.
+qed.

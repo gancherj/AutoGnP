@@ -14,13 +14,14 @@ let rec get_somelist es = match es with
             | _ -> []
 
 let mk_log level = mk_logger "Deduce.DeducMat" level "DeducMat.ml"
+let log_i = mk_log Bolt.Level.INFO
 
 let norm_e e = Norm.norm_expr ~strong:true e
 
 let i_bop op i1 i2 = I (op (expr_of_inverter i1) (expr_of_inverter i2))
 let i_mkapp o is ty = I (mk_App o (List.map expr_of_inverter is) ty) 
 
-
+let can_split_ei ei = Type.split_compat (fst ei).e_ty
 let matplus_bop e1 e2 = mk_MatPlus [e1;e2]
 
 let rec superset es = match es with
@@ -96,11 +97,13 @@ let ecs_expand_unnorm ecs depth =
     List.flatten (List.map (i_unnorm depth) ecs)
 
 let solve_mat ecs e =
-    let ecs' = ecs_expand_unnorm ecs 5 in
+    let ecs' = ecs_expand_unnorm ecs 6 in
     let etbl = He.create (List.length ecs') in
     List.iter (fun (e,i) -> He.add etbl e i) ecs';
+    List.iter (fun (e,i) -> He.add etbl e i) (UnnormMat.add_unary 3 ecs);
     let es = UnnormMat.expand e 5 in
     match try_solve_any etbl es with
     | Some i -> i
     | None -> 
+            log_i (lazy (fsprintf "not found: %a" pp_expr e));
             raise Not_found

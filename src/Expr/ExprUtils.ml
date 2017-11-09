@@ -284,21 +284,21 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
-  | MatSplitLeft,   [a]   ->
+  | (MatSplitLeft | ListOp MatSplitLeft),   [a]   ->
     pp_prefix MatSplitLeft  "sl ("     ")"    a
-  | MatSplitRight,   [a]   ->
+  | (MatSplitRight | ListOp MatSplitRight),   [a]   ->
     pp_prefix MatSplitRight  "sr ("     ")"    a
-  | MatConcat, [a;b] ->
+  | (MatConcat | ListOp MatConcat), [a;b] ->
     pp_bin (notsep above && above<>Infix(MatConcat,0)) MatConcat "@ || " a b
-  | MatMinus, [a;b] ->
+  | (MatMinus | ListOp MatMinus), [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
   | ListOp MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(ListOp MatMult,0)) (ListOp MatMult) "@ * " a b
   | MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(MatMult,0)) MatMult "@ * " a b
-  | MatOpp,   [a]   ->
+  | (MatOpp | ListOp MatOpp),   [a]   ->
     pp_prefix MatOpp  "-("     ")"    a
-  | MatTrans,   [a]   ->
+  | (MatTrans | ListOp MatTrans),   [a]   ->
     pp_prefix MatTrans  "tr ("     ")"    a
   | GExp _,   [a;b] ->
     pp_bin (notsep above && above<>NInfix(GMult) && above<>NInfix(GMult)

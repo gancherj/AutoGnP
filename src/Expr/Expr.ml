@@ -364,7 +364,38 @@ let mk_MapIndom h e =
   ensure_ty_equal e.e_ty h.MapSym.dom e None "mk_MapIndom";
   mk_App (MapIndom(h)) [e] mk_Bool
 
-let mk_ListOp op es =
+let rec flatten nop es =
+  let go e =
+    match e.e_node with
+    | Nary(nop1, es1) when nop1 = nop -> flatten nop es1
+    | _                               -> [e]
+  in
+  L.concat (L.map go es)
+
+let mk_nary s sort o es ty =
+  let es = flatten o es in
+  let es = if sort then L.sort compare_expr es else es in
+  match es with
+  | []  -> failwith (F.sprintf "%s: empty list given" s);
+  | [a] -> a
+  | _   ->
+    L.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
+    mk_e (Nary(o,es)) ty
+
+let mk_ListNop nop es =
+    match nop, es with
+    | MatPlus, e :: _ ->
+        begin match e.e_ty.ty_node with
+        | List (d,t) -> 
+                begin match t.ty_node with
+                | Mat (n,m) -> mk_nary "mk_ListPlus" true (ListNop MatPlus) es (mk_List d (mk_Mat n m))
+                | _ -> failwith (F.sprintf "Type error in listplus")
+                end
+        | _ -> failwith (F.sprintf "Type error in listplus")
+        end
+    | _ -> failwith (F.sprintf "Unrecognized list nop")
+
+let rec mk_ListOp op es =
     match op,es with
     | MatMult, [a;b] -> 
         ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
@@ -379,6 +410,8 @@ let mk_ListOp op es =
     | MatConcat, _ -> failwith "concat"
     | MatSplitLeft, _ -> failwith "splitleft"
     | MatSplitRight, _ -> failwith "splitRight"
+    | MatMinus, [e1;e2] ->
+            mk_ListNop MatPlus [e1; (mk_ListOp MatOpp [e2])]
     | _ -> failwith "unsupported list op"
 
 
@@ -428,40 +461,12 @@ let mk_MatConcat a b =
 
 (* *** Nary mk functions *)
 
-let rec flatten nop es =
-  let go e =
-    match e.e_node with
-    | Nary(nop1, es1) when nop1 = nop -> flatten nop es1
-    | _                               -> [e]
-  in
-  L.concat (L.map go es)
 
-let mk_nary s sort o es ty =
-  let es = flatten o es in
-  let es = if sort then L.sort compare_expr es else es in
-  match es with
-  | []  -> failwith (F.sprintf "%s: empty list given" s);
-  | [a] -> a
-  | _   ->
-    L.iter (fun e -> ensure_ty_equal e.e_ty ty e None s) es;
-    mk_e (Nary(o,es)) ty
 
 let mk_FPlus es = mk_nary "mk_FPlus" true FPlus es mk_Fq
 
 let mk_FMult es = mk_nary "mk_FMult" true FMult es mk_Fq
 
-let mk_ListNop nop es =
-    match nop, es with
-    | MatPlus, e :: _ ->
-        begin match e.e_ty.ty_node with
-        | List (d,t) -> 
-                begin match t.ty_node with
-                | Mat (n,m) -> mk_nary "mk_ListPlus" true (ListNop MatPlus) es (mk_List d (mk_Mat n m))
-                | _ -> failwith (F.sprintf "Type error in listplus")
-                end
-        | _ -> failwith (F.sprintf "Type error in listplus")
-        end
-    | _ -> failwith (F.sprintf "Unrecognized list nop")
 
 let mk_MatPlus es =
     match es with
