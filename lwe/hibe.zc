@@ -3,6 +3,33 @@ operator ListOf : Matrix_{n,m} -> List_{d} Matrix_{n,m}.
 operator ListOfm : Matrix_{1,m} -> List_{d} Matrix_{1,m}.
 operator ListOfn : Matrix_{1,n} -> List_{d} Matrix_{1,n}.
 
+adversary A_LO : List_{d} Matrix_{1,m} -> Bool.
+adversary A_LO_choose : () -> Matrix_{n,m}.
+adversary A_LO_choosen: () -> Matrix_{1,n}.
+adversary A_LO_choosem: () -> Matrix_{1,m}.
+adversary A_LO_choosem2: () -> Matrix_{1,m}.
+assumption ListOfMul [
+  an <- A_LO_choosen();
+  a <- A_LO_choose();
+  b <- A_LO(ListOfn(an) * ListOf(a)); ]
+[
+  an <- A_LO_choosen();
+  a <- A_LO_choose();
+  b <- A_LO(ListOfm(an * a));
+  ].
+
+  assumption ListOfmPlus [
+    a0 <- A_LO_choosem();
+    a1 <- A_LO_choosem2();
+    b <- A_LO(ListOfm(a0) + ListOfm(a1));
+  ]
+  [
+    a0 <- A_LO_choosem();
+    a1 <- A_LO_choosem2();
+    b <- A_LO(ListOfm(a0 + a1));
+    ].
+
+
 (* ListTail(A, ids) returns the tail of A after the IDs are bot. *)
 operator ListTail : (List_{d} Matrix_{n,m} * List_{d} BS_id) -> List_{d} Matrix_{n,m}.
 
@@ -18,7 +45,8 @@ assumption LWE
 
 
 
-operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
+type sktype.
+operator TrapGen : BS_tgr -> (Matrix_{n,m} * sktype).
 
 operator Rinj : BS_rinjr -> List_{d} Matrix_{m,m}.
 adversary Adv_LLHL : (BS_tgr * Matrix_{n,m} * List_{d} Matrix_{n,m} * List_{d} Matrix_{1,m}) -> Bool.
@@ -30,9 +58,9 @@ assumption LLHL
 [ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; Ai <-$ List_{d} Matrix_{n,m}; w <- Adv_LLHLchoose(); b <- Adv_LLHL(tgr , TrapGen(tgr)#0, Ai , w * Rinj(rinjr));].
 
 
-type sktype.
 (*todo what is t*)
 operator ListSampleLeft : (BS_sl * (Matrix_{n,m} * List_{d} Matrix_{n,m}) * List_{d} Matrix_{n,m} * sktype) -> sktype. 
+operator ListSampleRight : (BS_sl * Matrix_{n,m} * List_{d} Matrix_{n,m} * List_{d} Matrix_{m,m} * sktype) -> sktype.
 operator ListIdHash : List_{d} BS_id -> List_{d} Matrix_{n,n}.
 
 (* IsPrefix(a,b) returns true when a is a prefix of b or vice versa *)
@@ -43,6 +71,54 @@ oracle Derive : (List_{d} BS_id * List_{d} BS_id * sktype) -> sktype.
 operator Minj : Bool -> Matrix_{1,1}.
 adversary Adv1 : () -> List_{d} BS_id.
 
+
+adversary A_SL_G : (Matrix_{n,m} * List_{d} Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1}) -> Bool.
+adversary A_SL_ch : () -> List_{d} BS_id.
+oracle A_SL_O : (List_{d} BS_id * List_{d} BS_id * sktype) -> sktype.
+
+assumption dec_SL_SR [
+  tgr <-$ BS_tgr;
+  rinjr <-$ BS_rinjr;
+  let A = TrapGen(tgr)#0;
+  let TA = TrapGen(tgr)#1;
+    B <-$ Matrix_{n,m};
+    u <-$ Matrix_{n,1};
+  id' <- A_SL_ch();
+    b <- A_SL_G (A, (ListOf(A) * Rinj(rinjr)) - (ListIdHash(id') * ListOf(B)), B, u) with
+  A_SL_O (tt) = {
+    let idold = tt#0;
+    let idnew = tt#1;
+    let skidold = tt#2;
+    guard (not IsPrefix(idold, id'));
+    guard (not IsPrefix(idnew, id'));
+    guard (IsValidSK((A, (ListOf(A) * Rinj(rinjr) - ListIdHash(id') * ListOf(B)) + ListIdHash(idold) * ListOf(B)), skidold));
+      slr <-$ BS_sl;
+    return ListSampleLeft(slr, (A,  (ListOf(A) * Rinj(rinjr) - ListIdHash(id') * ListOf(B)) + ListIdHash(idold) * ListOf(B)), ListTail( (ListOf(A) * Rinj(rinjr) - ListIdHash(id') * ListOf(B)) + ListIdHash(idnew) * ListOf(B), idold), skidold);
+  };
+]
+[
+  tgr <-$ BS_tgr;
+  rinjr <-$ BS_rinjr;
+  A <-$ Matrix_{n,m};
+  let B = TrapGen(tgr)#0;
+  let TB = TrapGen(tgr)#1;
+    u <-$ Matrix_{n,1};
+  id' <- A_SL_ch();
+    b <- A_SL_G (A, ListOf(A) * Rinj(rinjr) - ListIdHash(id') * ListOf(B), B, u) with
+  A_SL_O (tt) = {
+    let idold = tt#0;
+    let idnew = tt#1;
+    let skidold = tt#2;
+    guard (IsPrefix(idold, id') <> true);
+    guard (IsPrefix(idnew, id') <> true);
+    guard (IsValidSK((A,  ListOf(A) * Rinj(rinjr) - ListIdHash(id') * ListOf(B) + ListIdHash(idold) * ListOf(B)), skidold) = true);
+      slr <-$ BS_sl;
+    return ListSampleRight(slr, A, (ListIdHash(idnew) - ListIdHash(id')) * ListOf(B), Rinj(rinjr), skidold);
+  };
+  ].
+    
+    
+  
 
 
 adversary Adv2 : (Matrix_{n,m} * List_{d} Matrix_{n,m} * Matrix_{n,m} * Matrix_{n,1} * (Matrix_{1,m} * List_{d} Matrix_{1,m}) * Matrix_{1,1}) -> Bool.
@@ -66,7 +142,7 @@ bound_adv [
     chir1 <-$ BS_chi; let e1 = Chi1(chir1);
   let F = (A, Ai + Hid' * ListOf(B));
   let c0 = ((tr s) * F#0 + (tr e0), ListOfn(tr s) * F#1 + ListOfm(tr e0) * R);
-  let c1 = (tr s) * u + e1 + Minj(b);
+  let c1 = (tr s) * u + (tr e1) + Minj(b);
     b' <- Adv2 (A, Ai, B, u, c0, c1) with
   Derive (tt) = {
     let idold = tt#0;
@@ -110,4 +186,82 @@ bound_adv [
   move chir0 9.
   move chir1 10.
   dist_eq.
-  
+
+  (* invoke *)
+  move tgr 2.
+  move rinjr 3.
+  abstract 12 tt2 (A, A1t, B, u).
+  abstract 23 res2 b=b'.
+  move Ai 13.
+  rename Ai Aiold.
+  rename A1t Ai.
+  move Ai 8.
+  move id' 7.
+  abstract 7 tt1 ().
+  abstract 9 res1 id'.
+  move b 13.
+  move Hid' 13.
+
+  unfold Ai.
+  hybrid (23,1) {
+    let tt' = tt;
+    let idold = tt'#0;
+    let idnew = tt'#1;
+    let skidold = tt'#2;
+    guard (IsPrefix(idold, res1) <> true);
+    guard (IsPrefix(idnew, res1) <> true);
+    guard (IsValidSK((A, -(ListIdHash(res1) * ListOf(B)) + (ListOf(A) * Rinj(rinjr) + ListIdHash(idold) * ListOf(B))), skidold) = true);
+      slr <-$ BS_sl;
+    let r = ListSampleLeft(slr, (A, ListOf(A) * Rinj(rinjr) - ListIdHash(res1) * ListOf(B) + ListIdHash(idold) * ListOf(B)), ListTail(ListOf(A) * Rinj(rinjr) - ListIdHash(res1) * ListOf(B) + ListIdHash(idnew) * ListOf(B), idold), skidold);
+    return r;
+  }.
+      LR: norm.
+  dist_eq.
+  norm_solve tt2.
+  assumption_decisional * dec_SL_SR -> [tgr, tgr; A, A; rinjr, rinjr; TA, TA; B, B; u, u; id', res1; A_SL_O`slr, Derive`slr; b, res2; A_SL_O`tt, Derive`tt; A_SL_O`idold, Derive`idold; A_SL_O`idnew, Derive`idnew; A_SL_O`skidold, Derive`skidold] 7 9 [] 10 24 [23 [(1 1 9 A_SL_O)]].
+  norm.
+   abstract 1 tt1 ().
+   move s 2.
+   abstract 3 res1 (tr s).
+   abstract 4 tt2 ().
+   move A 5.
+   abstract 6 res2 (A).
+   abstract 7 tt3 ( (ListOfn(res1) * ListOf(res2))).
+   abstract 17 res3 (b = b').
+   assumption_decisional ListOfMul -> [1 3] [4 6] [7 17].
+   norm.
+   subst ( (ListOfm(tr (Chi0(chir0))) * Rinj(rinjr))
+               + (ListOfm(tr (s) * A) * Rinj(rinjr)) -> (ListOfm(tr (Chi0 (chir0))) + ListOfm (tr s * A)) * Rinj(rinjr)).
+   abstract 1 tt1 ().
+   move chir0 2.
+   abstract 3 res1 (tr (Chi0 (chir0))).
+   abstract 4 tt2 ().
+   move s 5.
+   move A 6.
+   abstract 7 res2 (tr s * A).
+   abstract 8 tt3 (ListOfm(res1) + ListOfm(res2)).
+   abstract 17 res3 (b = b').
+   assumption_decisional ListOfmPlus -> [1 3] [4 7] [8 17].
+   norm.
+   
+  mat_fold 3 6 Au.
+  move Au 1.
+  move s 2.
+  move chir0 3.
+  move chir1 4.
+  abstract 5 lwett (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
+  abstract 12 ans (b = b').
+  //=.
+   subst ((tr (Chi0(chir0)) + (tr (s) * sl (lwett#0))) -> sl tr lwett#1).
+
+   subst (Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (lwett#0)) -> Minj(b) + sr tr lwett#1).
+   
+   assumption_decisional LWE -> [lwett ans] r__.
+   norm.
+   rnd r__ (x -> tr x) (x -> tr x); //.
+   mat_unfold 2.
+   norm.
+   move B 8.
+   rnd B (x -> x - Minj(b)) (x -> x + Minj(b)); //.
+   indep!.
+qed.

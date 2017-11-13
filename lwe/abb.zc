@@ -3,6 +3,9 @@ adversary A_dkillnm : () -> Bool.
 assumption [inf] dkill_nm [
   a <-$ Matrix_{n,m}; b <- A_dkillnm();
 ] [ b <- A_dkillnm();].
+
+
+
 operator Chi : BS_chir -> Matrix_{m+1,1}.
 
 adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
@@ -15,6 +18,7 @@ operator Rinj : BS_rinjr -> Matrix_{m,m}.
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
 
+(* TODO i can probably now abstract lhl *)
 adversary Adv_LHL : (BS_tgr * BS_chir * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m} * Matrix_{m+1,1}) -> Bool.
 assumption LHL
 [ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; chir <-$ BS_chir;
@@ -122,15 +126,15 @@ bound_adv [
   
   trans* [subst 16 (a1t -> A * R)].
     LR: norm.
-  R: assumption_decisional! LHL -> z.
-  LR:norm.
-  assumption_decisional! dkill_nm <- z; //.
-  move z 4.
-  rename a1t zz.
-  rename z a1t.
-  rename zz z.
-  move z 4.
-  move a1t 7.
+    R: assumption_decisional! LHL -> z.
+    LR:norm.
+    assumption_decisional! dkill_nm <- z; //.
+    move z 4.
+    rename a1t zz.
+    rename z a1t.
+    rename zz z.
+    move z 4.
+    move a1t 7.
     dist_eq.
   unfold A1.
   abstract 16 A1 ((A * R) - (IdHash(i') * B)).
@@ -174,7 +178,9 @@ bound_adv [
  move chir 3.
    norm. //=.
  (* need to factor (a || ab) as a * (1 || b) *)
- assumption_decisional! LWE -> .
+ abstract 4 tt (Au, (tr Au) * s + Chi(chir)).
+ abstract 11 ans (b = b').
+ assumption_decisional! LWE -> [tt ans] v .
  rnd r__ (x -> tr x) (x -> tr x); //.
  mat_unfold 2; //.
  move 8 2.
