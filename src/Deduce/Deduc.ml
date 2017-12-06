@@ -139,7 +139,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Eq | Not | Ifte ->
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
-      | MatMult|MatOpp|MatTrans|MatMinus|MatConcat|MatSplitLeft|MatSplitRight ->
+      | MatMult|MatOpp|MatTrans|MatConcat|MatSplitLeft|MatSplitRight ->
               add_sub e; List.iter (register_subexprs true) es 
       
       | ListOp _ -> 
@@ -214,14 +214,12 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       (* in the PPT case, we always rely on the solver for groups *)
     | GExp _, [e1;e2] when not ppt ->
       construct2 e e1 e2 mk_GExp
-    | MatMinus, [e1;e2]  -> construct2 e e1 e2 mk_MatMinus 
     | MatMult, [e1;e2]   -> construct2 e e1 e2 mk_MatMult
     | MatConcat, [e1;e2]   -> construct2 e e1 e2 mk_MatConcat
     | MatOpp, [e1] -> construct1 e e1 mk_MatOpp
     | MatTrans, [e1] -> construct1 e e1 mk_MatTrans
     | MatSplitLeft, [e1] -> construct1 e e1 mk_MatSplitLeft
     | MatSplitRight, [e1] -> construct1 e e1 mk_MatSplitRight
-    | ListOp MatMinus, [e1; e2] -> construct2 e e1 e2 mk_ListMatMinus
     | ListOp MatMult, [e1; e2] -> construct2 e e1 e2 mk_ListMatMult
     | ListOp MatConcat, [e1; e2] -> construct2 e e1 e2 mk_ListMatConcat
     | ListOp MatOpp, [e1] -> construct1 e e1 mk_ListMatOpp

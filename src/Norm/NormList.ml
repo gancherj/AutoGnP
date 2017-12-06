@@ -134,7 +134,6 @@ and rewrite_list_op op es  =
     | ListOp MatMult, [e1;e2] -> rewrite_mult e1 e2   
     | ListOp MatOpp, [e1] -> rewrite_opp e1   
     | ListOp MatTrans, [e1] -> rewrite_trans e1   
-    | ListOp MatMinus, [e1;e2] -> rewrite_minus e1 e2   
     | ListOp MatConcat, [e1;e2] -> rewrite_concat e1 e2   
     | ListOp MatSplitLeft, [e1] -> rewrite_splitleft e1   
     | ListOp MatSplitRight, [e1] -> rewrite_splitright e1   
@@ -207,9 +206,6 @@ and rewrite_trans e    =
     (* tr (a * b) = tr b * tr a *)
     | App(ListOp MatMult, [a;b]) ->  (mk_ListMatMult  (mk_ListMatTrans  b )
     (mk_ListMatTrans a))
-    (* tr (a - b) = tr a - tr b *)
-    | App(ListOp MatMinus, [a;b]) ->  (mk_ListMatMinus (mk_ListMatTrans a)
-    (mk_ListMatTrans b))
     (* tr (-a) -> - (tr a *)
     | App(ListOp MatOpp, [a]) ->  (mk_ListMatOpp (mk_ListMatTrans a))
     (* tr (a + b) -> tr a + tr b *)
@@ -239,9 +235,6 @@ and rewrite_plus es    =
     | _ -> mk_ListNop MatPlus es') in
     ans
 
-and rewrite_minus e1 e2    =
-    (* a - b -> a + (-b) *)
-    (mk_ListNop MatPlus [e1; mk_ListMatOpp e2])
 
 
 

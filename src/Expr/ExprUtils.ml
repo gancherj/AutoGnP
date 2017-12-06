@@ -118,7 +118,7 @@ let is_field_op = function
   | RoCall _ | MapLookup _
   | MapIndom _ | Eq
   | Ifte | Not
-  | FunCall _  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat |
+  | FunCall _  | MatMult | MatOpp | MatTrans | MatConcat |
   MatSplitLeft | MatSplitRight -> false
   | ListOp _ -> false
 
@@ -141,7 +141,7 @@ let is_list_nop = function
     | _ -> false
 
 let is_mat_op = function
-  | MatMult | MatOpp | MatTrans | MatMinus | MatConcat | MatSplitLeft |
+  | MatMult | MatOpp | MatTrans | MatConcat | MatSplitLeft |
   MatSplitRight -> true
   | _ -> false
 
@@ -176,7 +176,7 @@ let pp_number_tuples = ref false
 *)
 
 (** Pretty print constant. *)
-let pp_cnst fmt c ty =
+let rec pp_cnst fmt c ty =
   match c with
   | GGen   -> if Groupvar.name (destr_G_exn ty) <> ""
               then F.fprintf fmt "g_%a" Groupvar.pp (destr_G_exn ty)
@@ -184,9 +184,9 @@ let pp_cnst fmt c ty =
   | FNat n -> F.fprintf fmt "%i" n
   | Z      -> F.fprintf fmt "0%%%a" pp_ty ty
   | B b    -> F.fprintf fmt "%b" b
-  | MatZero -> F.fprintf fmt "0%%%a" pp_ty ty
-  | MatId  -> F.fprintf fmt "I%%%a" pp_ty ty
-  | ListOf c-> F.fprintf fmt "todo"
+  | MatZero -> F.fprintf fmt "0" 
+  | MatId  -> F.fprintf fmt "I" 
+  | ListOf c-> F.fprintf fmt "[%a]" (fun fmt d -> pp_cnst fmt d ty) c
 
 (** Constructor above the current expression. *)
 type 'a above =
@@ -290,8 +290,6 @@ and pp_op_p ~qual above fmt (op, es) =
     pp_prefix MatSplitRight  "sr ("     ")"    a
   | (MatConcat | ListOp MatConcat), [a;b] ->
     pp_bin (notsep above && above<>Infix(MatConcat,0)) MatConcat "@ || " a b
-  | (MatMinus | ListOp MatMinus), [a;b] ->
-    pp_bin (notsep above && above<>Infix(MatMinus,0)) MatMinus "@ - " a b
   | ListOp MatMult, [a;b] ->
     pp_bin (notsep above && above<>Infix(ListOp MatMult,0)) (ListOp MatMult) "@ * " a b
   | MatMult, [a;b] ->
@@ -347,7 +345,7 @@ and pp_op_p ~qual above fmt (op, es) =
   | (FunCall _ | RoCall _ | MapLookup _ | MapIndom _), ([] | _::_::_)
   | (FOpp | FInv | Not | GInv | GLog _ | MatOpp | MatTrans | MatSplitRight |
   MatSplitLeft), ([] | _::_::_)
-  | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatMinus | MatConcat), ([] | [_] | _::_::_::_)
+  | (FMinus | FDiv | Eq | EMap _ | GExp _ | MatConcat), ([] | [_] | _::_::_::_)
   | Ifte, ([] | [_] | [_;_] | _::_::_::_::_)
   | MatMult, ([] | [_] | _::_::_) 
   | _ ->

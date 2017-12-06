@@ -132,7 +132,6 @@ and rewrite_mat_op op es  =
     | MatMult, [e1;e2] -> rewrite_mult e1 e2   
     | MatOpp, [e1] -> rewrite_opp e1   
     | MatTrans, [e1] -> rewrite_trans e1   
-    | MatMinus, [e1;e2] -> rewrite_minus e1 e2   
     | MatConcat, [e1;e2] -> rewrite_concat e1 e2   
     | MatSplitLeft, [e1] -> rewrite_splitleft e1   
     | MatSplitRight, [e1] -> rewrite_splitright e1   
@@ -201,8 +200,6 @@ and rewrite_trans e    =
     match e.e_node with
     (* tr (a * b) = tr b * tr a *)
     | App(MatMult, [a;b]) ->  (mk_MatMult (mk_MatTrans b) (mk_MatTrans a))
-    (* tr (a - b) = tr a - tr b *)
-    | App(MatMinus, [a;b]) ->  (mk_MatMinus (mk_MatTrans a) (mk_MatTrans b))
     (* tr (-a) -> - (tr a *)
     | App(MatOpp, [a]) ->  (mk_MatOpp (mk_MatTrans a))
     (* tr (a + b) -> tr a + tr b *)
@@ -230,11 +227,6 @@ and rewrite_plus es    =
     | 0 -> let (n,m) = get_mat_mdims (List.hd es).e_ty in mk_MatZero n m
     | _ -> mk_MatPlus es') in
     ans
-
-and rewrite_minus e1 e2    =
-    (* a - b -> a + (-b) *)
-    (mk_MatPlus [e1; mk_MatOpp e2])
-
 
 
 and rewrite_concat e1 e2   = 

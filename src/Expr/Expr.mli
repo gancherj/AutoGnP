@@ -66,7 +66,6 @@ type op =
   | MatMult
   | MatOpp
   | MatTrans
-  | MatMinus
   | MatConcat
   | MatSplitLeft
   | MatSplitRight
@@ -166,14 +165,12 @@ val mk_Not         : expr -> expr
 val mk_Ifte        : expr -> expr -> expr -> expr
 val mk_ListOp      : op -> expr list -> expr
 val mk_ListMatMult : expr -> expr -> expr
-val mk_ListMatMinus : expr -> expr -> expr
 val mk_ListMatTrans    : expr -> expr
 val mk_ListMatOpp      : expr -> expr
 val mk_ListMatSplitLeft : expr -> expr
 val mk_ListMatSplitRight : expr -> expr
 val mk_ListMatConcat    : expr -> expr -> expr
 val mk_MatMult     : expr -> expr -> expr
-val mk_MatMinus    : expr -> expr -> expr
 val mk_MatTrans    : expr -> expr
 val mk_MatOpp      : expr -> expr
 val mk_MatSplitLeft : expr -> expr

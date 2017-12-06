@@ -75,7 +75,6 @@ type op =
   | MatMult
   | MatOpp
   | MatTrans
-  | MatMinus
   | MatConcat
   | MatSplitLeft
   | MatSplitRight
@@ -134,7 +133,6 @@ let rec op_hash = function
   | ListOp o       -> hcomb 24 (op_hash o)
   | MatMult        -> 18
   | MatOpp         -> 19
-  | MatMinus       -> 21
   | MatTrans       -> 20
   | MatConcat      -> 21
   | MatSplitLeft   -> 22
@@ -410,13 +408,10 @@ let rec mk_ListOp op es =
     | MatConcat, _ -> failwith "concat"
     | MatSplitLeft, _ -> failwith "splitleft"
     | MatSplitRight, _ -> failwith "splitRight"
-    | MatMinus, [e1;e2] ->
-            mk_ListNop MatPlus [e1; (mk_ListOp MatOpp [e2])]
     | _ -> failwith "unsupported list op"
 
 
 let mk_ListMatMult e1 e2 = mk_ListOp MatMult [e1;e2]
-let mk_ListMatMinus e1 e2 = mk_ListOp MatMinus [e1;e2]
 let mk_ListMatConcat e1 e2 = mk_ListOp MatConcat [e1;e2]
 let mk_ListMatTrans e1 = mk_ListOp MatTrans [e1]
 let mk_ListMatOpp e1 = mk_ListOp MatOpp [e1]
@@ -447,11 +442,6 @@ let mk_MatSplitRight a =
     let (n, _) = ensure_mat_ty a.e_ty in
     let (_, d2) = get_split_dim a.e_ty in
     mk_App (MatSplitRight) [a] (mk_Mat n d2)
-
-let mk_MatMinus a b =
-    let (n,m) = ensure_mat_ty a.e_ty in
-    ensure_ty_equal b.e_ty (mk_Mat n m) a None "mk_MatMinus";
-    mk_App (MatMinus) [a;b] (mk_Mat n m)
 
 let mk_MatConcat a b =
     ensure_concat_compat a.e_ty b.e_ty a (Some b) "mk_MatConcat";

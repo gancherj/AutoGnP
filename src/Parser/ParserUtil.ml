@@ -185,9 +185,10 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
             let e2 = go e2 in
             begin match e1.E.e_ty.T.ty_node with
             | T.Fq -> E.mk_FMinus (e1) (e2)
-            | T.Mat _ -> E.mk_MatMinus e1 e2
+            | T.Mat _ -> E.mk_MatPlus [e1; E.mk_MatOpp e2]
             | T.List (_, t) -> begin match t.T.ty_node with
-                               | T.Mat _ -> E.mk_ListMatMinus e1 e2
+                               | T.Mat _ -> E.mk_ListNop E.MatPlus [e1;
+                               E.mk_ListMatOpp e2]
                                | _ -> tacerror "subtract list err"
                                end
             | _ -> tacerror "type error in subtraction of %a - %a" EU.pp_expr e1
