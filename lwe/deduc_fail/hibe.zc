@@ -1,4 +1,7 @@
-(* structural operators *)
+(* This proof is largely identical to the ABB proof, and the issues of deducibility there show up here as well. *)
+
+
+(* Structural operators I have yet to encode in the system. *)
 operator ListOf : Matrix_{n,m} -> List_{d} Matrix_{n,m}.
 operator ListOfm : Matrix_{1,m} -> List_{d} Matrix_{1,m}.
 operator ListOfn : Matrix_{1,n} -> List_{d} Matrix_{1,n}.
@@ -58,7 +61,6 @@ assumption LLHL
 [ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; Ai <-$ List_{d} Matrix_{n,m}; w <- Adv_LLHLchoose(); b <- Adv_LLHL(tgr , TrapGen(tgr)#0, Ai , w * Rinj(rinjr));].
 
 
-(*todo what is t*)
 operator ListSampleLeft : (BS_sl * (Matrix_{n,m} * List_{d} Matrix_{n,m}) * List_{d} Matrix_{n,m} * sktype) -> sktype. 
 operator ListSampleRight : (BS_sl * Matrix_{n,m} * List_{d} Matrix_{n,m} * List_{d} Matrix_{m,m} * sktype) -> sktype.
 operator ListIdHash : List_{d} BS_id -> List_{d} Matrix_{n,n}.

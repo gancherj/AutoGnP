@@ -6,11 +6,12 @@ assumption [inf] dkill_nm [
 
 
 
-operator Chi : BS_chir -> Matrix_{m+1,1}.
+operator Chi0 : BS_chir -> Matrix_{m,1}.
+operator Chi1 : BS_chir -> Matrix_{1,1}.
 
 adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
 assumption LWE
-[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir <-$ BS_chir; b <- Adv_LWE (A, (tr A) * s + Chi(chir));]
+[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chir; chir1 <-$ BS_chir; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
 
@@ -18,14 +19,13 @@ operator Rinj : BS_rinjr -> Matrix_{m,m}.
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
 
-(* TODO i can probably now abstract lhl *)
-adversary Adv_LHL : (BS_tgr * BS_chir * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m} * Matrix_{m+1,1}) -> Bool.
+adversary Adv_LHL : (BS_tgr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m}) -> Bool.
+adversary Adv_LHLchoose : () -> Matrix_{1,m}.
 assumption LHL
-[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; chir <-$ BS_chir;
-  b <- Adv_LHL(tgr, chir, TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
-    (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));]
-[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; chir <-$ BS_chir; B <-$ Matrix_{n,m}; b <- Adv_LHL(tgr, chir,  TrapGen(tgr)#0,B, (sl tr Chi(chir)) * Rinj(rinjr), Chi(chir));].
-
+[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; w <- Adv_LHLchoose();
+  b <- Adv_LHL(tgr , TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
+    w * Rinj(rinjr));]
+[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; B <-$ Matrix_{n,m}; w <- Adv_LHLchoose(); b <- Adv_LHL(tgr , TrapGen(tgr)#0,B, w * Rinj(rinjr));].
 
 operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) -> Matrix_{m+m,1}.
 operator SampleRight : 
@@ -93,10 +93,12 @@ bound_adv [
   let Hid' = IdHash(i');
     s <-$ Matrix_{n,1};
     rinjr <-$ BS_rinjr; let R = Rinj(rinjr);
-    chir <-$ BS_chir; 
-  let X = Chi(chir);
+    chir0 <-$ BS_chir; 
+    chir1 <-$ BS_chir;
 
-  let e0 = tr sl tr X; let e1 = tr sr tr X;
+ (* let X = tr (tr Chi0(chir0) || tr Chi1(chir1));*)
+  let e0 = Chi0(chir0); let e1 = Chi1(chir1);
+  (*let e0 = tr sl tr X; let e1 = tr sr tr X;*)
   let c0 = (tr s) * (A || A1 + Hid' * B) + (tr e0 || (tr e0) * R);
   let c1 = (tr s) * u + tr e1 + Minj(b);
   
@@ -114,7 +116,6 @@ bound_adv [
   (* H1: rewrite A1 into A*R - Hid'*B  *)
   move tgrA 1.
   move rinjr 2.
-  move chir 3.
 
   move B 1.
   rnd A1 (A1 -> A1 - IdHash(i') * B) (A1 -> A1 + IdHash(i') * B).
@@ -126,15 +127,25 @@ bound_adv [
   
   trans* [subst 16 (a1t -> A * R)].
     LR: norm.
-    R: assumption_decisional! LHL -> z.
+    R: abstract 3 tt1 ().
+    R: move chir0 4.
+    R: abstract 5 res1 tr Chi0(chir0).
+    R: abstract 6 tt2 (tgrA, TrapGen(tgrA)#0, TrapGen(tgrA)#0 * Rinj(rinjr), res1 * Rinj(rinjr)).
+    R: abstract 15 res2 b = b'.
+    R: subst ((tr (s) * tt2#1 * Rinj(rinjr)) -> (tr (s) * tt2#2)).
+    (* Here, the LHL assumption should be able to be used automatically. (And the above manual substitution, too, wouldn't be necessary. However I am using multiple adversaries in the assumption; can AutoG&P handle this automatically for any theory? *)
+    R: assumption_decisional LHL -> [tt1 res1] [tt2 res2] z.
     LR:norm.
     assumption_decisional! dkill_nm <- z; //.
-    move z 4.
     rename a1t zz.
     rename z a1t.
     rename zz z.
-    move z 4.
-    move a1t 7.
+    move tgrA 1.
+    move rinjr 2.
+    move z 3.
+    move chir0 4.
+    move i' 5.
+    move B 6.
     dist_eq.
   unfold A1.
   abstract 16 A1 ((A * R) - (IdHash(i') * B)).
@@ -149,15 +160,15 @@ bound_adv [
     }.
     LR: norm.
     dist_eq.
-    move A 2.
-    move TA 3.
-    move R 5.
-    move B 6.
-    move u 7.
-    move i' 8.
-    abstract 8 tt ().
-    abstract 10 res i'.
-    abstract 11 tt1 (A, A*R - IdHash(res) * B, B, u).  
+    move A 3.
+    move TA 4.
+    move R 6.
+    move B 7.
+    move u 8.
+    move i' 9.
+    abstract 10 tt ().
+    abstract 11 res i'.
+    abstract 12 tt1 (A, A*R - IdHash(res) * B, B, u).  
     abstract 24 ans (b = b').
     unfold A1.
     hybrid (22,1) {
@@ -169,21 +180,37 @@ bound_adv [
       }.
           LR: norm.
       dist_eq.
+      move A 2.
+      move TA 3.
+      move rinjr 4.
+      move R 5.
+      move B 6.
+      move u 7.
+      move tt 9.
+      move a1t 13.
+    (* this is also manual but I think the new tactic doesn't yet support automation *)
     assumption_decisional * dec_SL_SR -> [tgrA, tgrA; A,A; TA, TA; rinjr, rinjr; R, R; B,B; u,u; i', res; A_SL_O`slr, KeyGen`slr; b,ans] 8 10 [] 11 23 [22 [(1 1 4 A_SL_O)]].
    norm. 
  (* H3: invoke LWE assumption *) 
  mat_fold 2 4 Au.
  move Au 1.
  move s 2.
- move chir 3.
    norm. //=.
  (* need to factor (a || ab) as a * (1 || b) *)
- abstract 4 tt (Au, (tr Au) * s + Chi(chir)).
- abstract 11 ans (b = b').
- assumption_decisional! LWE -> [tt ans] v .
+   move chir0 3.
+   move chir1 4.
+   abstract 5 tt (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
+   abstract 12 ans b=b'.
+   //=.
+   subst ((tr (Chi0(chir0)) + (tr (s) * sl (tt#0))) -> sl tr tt#1).
+   subst ((tr (Chi0(chir0)) * Rinj(rinjr))
+                  + (tr (s) * sl (tt#0) * Rinj(rinjr)) -> (sl tr tt#1) * Rinj(rinjr)).
+   subst (Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (tt#0)) -> Minj(b) + sr tr tt#1).
+   (* Here, the automatic invocation of LWE assumption hangs. This would be fixed by a better deducibility algorithm *)
+   assumption_decisional LWE -> [tt ans] r__.
  rnd r__ (x -> tr x) (x -> tr x); //.
  mat_unfold 2; //.
- move 8 2.
+ move B 8.
  rnd B (x -> x - Minj(b)) (x -> x + Minj(b)).
  norm.
  indep!.
