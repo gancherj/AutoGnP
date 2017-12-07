@@ -99,6 +99,11 @@ let get_split_dim t =
                     | _ -> assert false)
     | _ -> assert false
 
+let dim_of_mat t =
+    match t.ty_node with
+    | Mat (x,y) -> (x,y)
+    | _ -> assert false
+
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
 
