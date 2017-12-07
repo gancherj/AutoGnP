@@ -31,7 +31,7 @@ let rec lexord_lt ord l1 l2 =
    |([],_) -> true
    |(_,[]) -> false
    | (h1::t1,h2::t2) -> if ord h1 h2 then true
-                       else h1 = h2 && lexord ord t1 t2;;
+                       else h1 = h2 && lexord_lt ord t1 t2;;
 let rec tryfind f l =
   match l with
       [] -> failwith "tryfind"
@@ -51,9 +51,11 @@ type id_var = int;;
 
 type id_size = int;;
 
+type vars = id_var list;;
+
 type mon =
   { coeff : Num.num;
-    vars : id_var list;
+    vars : vars;
     length : int;
     size : id_size * id_size;
   };;
@@ -95,7 +97,6 @@ let rec is_prefix (m1:id_var list) (m2:id_var list) =
                         else
                            raise NotPrefix;;
 
-                             
 
 (* ------------------------------------------------------------------------- *)
 (* Monomial ordering.                                                        *)
@@ -137,8 +138,6 @@ let rec mpoly_mul l1 l2 =
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
 (* ------------------------------------------------------------------------- *)
-
-type vars = id_var list
 
 module DBase : sig 
   type t
@@ -246,10 +245,13 @@ let rec reduce (p:pol) (polys:pol list)=
 (* Computation of critical pairs.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+(*
 let rec monom_critical_pairs (m1 :id_var list) (m2:id_var list) : pol*pol list =
   match is_prefix m1 m2 with
     ([],[]) -> ([],[])
   | ;;
+
+ *)
 
 (* Exemples *)
 let m1 = {coeff=Num.Int 1; vars=[1]; size=(2,2); length=1};;
