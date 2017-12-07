@@ -1,7 +1,7 @@
 (* Grobner basis computations for K[X]-module *)
 #use "topfind";;
 #require "num";;
-(* Imports and abbreviations *)
+ (* Imports and abbreviations *)
 
     
 open List;;
@@ -140,13 +140,17 @@ let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 (* ------------------------------------------------------------------------- *)
 
 module DBase : sig 
-  type t
+ type t = 
+    { mutable t_pols : pol list;
+      mutable t_allp : pol list;
+              t_sons : (id_var, t) Hashtbl.t }
 
   val create : unit -> t
   val add : t -> pol -> unit
 
-  val get_all_prefix : t -> vars -> (pol list) list 
-
+  val get_all_prefix : t -> vars -> ((pol list * vars) list) 
+  val from_list : pol list -> t
+  val get_vson : t -> id_var -> t option
 end = struct 
 
   type t = 
@@ -188,9 +192,16 @@ end = struct
       | v:: vs ->
         match get_vson t v with 
         | None -> ps
-        | Some t -> aux (t.t_pols :: ps) t vs in
+        | Some t -> aux ((t.t_pols,vs) :: ps) t vs in
     aux []
 
+  let from_list (polys:pol list)=
+    let rec add_list t (polys) =
+      match polys with
+        [] -> t
+       |p::q -> add t p; add_list t q
+    in
+    add_list (create ()) polys
 end
 
 
@@ -198,8 +209,22 @@ end
 (* Reduction of a polynom with respect to a base.                            *)
 (* ------------------------------------------------------------------------- *)
 
+let rec get_all_products (m:vars) (polys:DBase.t) : pol list list =
+  let rec sub_sol (m:vars) (pol_prefs: (pol list*vars) list) =
+    match pol_prefs with
+    | [] -> []
+    | (p,r)::q -> match p with
+              |[] -> []
+              |pol::tail -> if r = [] then [pol]::(sub_sol m ((tail,r)::q))
+                                else let subsols = get_all_products r polys in
+                                     (List.map (fun a -> pol::a) subsols)@(sub_sol m ((tail,r)::q))
+  in
+sub_sol m (DBase.get_all_prefix polys m);;
+
+
 (* return all the product K of polys such that the leading term of K is equal m *)
 (* TODO this is wrong ! *)
+(*
 let rec get_all_products (m:id_var list) (polys:pol list) : pol list list =                  
     match polys with
       [] -> []
@@ -213,11 +238,11 @@ let rec get_all_products (m:id_var list) (polys:pol list) : pol list list =
              else let sub_sols = get_all_products v polys in
                   (List.map (fun a-> pol::a) sub_sols)@(get_all_products m rpolys)
          with NotPrefix -> get_all_products m rpolys;;
-
+ *)
 
 
 (* return all the possible one step reductions of a polynom wrt a base *)
-let reduce_1 (p:pol) (polys:pol list) =
+let reduce_1 (p:pol) (polys:DBase.t) =
   match p with
     [] -> []
    |m::_ -> let prods = get_all_products m.vars polys in
@@ -235,7 +260,7 @@ let reduce_1 (p:pol) (polys:pol list) =
                 ) prods;; 
               
 (* compute all the possible reductions of p wrt polys *)
-let rec reduce (p:pol) (polys:pol list)=
+let rec reduce (p:pol) (polys:DBase.t)=
   let reduced_1 = reduce_1 p polys in
   if reduced_1 = [] then [p]
   else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
@@ -248,8 +273,7 @@ let rec reduce (p:pol) (polys:pol list)=
 (*
 let rec monom_critical_pairs (m1 :id_var list) (m2:id_var list) : pol*pol list =
   match is_prefix m1 m2 with
-    ([],[]) -> ([],[])
-  | ;;
+    ([],[]) -> ([],[])  | ;;
 
  *)
 
@@ -263,8 +287,12 @@ let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
 let p1 = mpoly_add [m1] [m2];;
 mpoly_mul [m1] [m2;m1];;
 
-reduce_1 [m3] [[m2;m4];[m5;m3]];;
-reduce [m3;m1] [[m4;m1];[m5];[m2;m1];[m1]];;
+DBase.get_all_prefix    (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]) [1;2] ;;
+
+get_all_products [1;2]   (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]);;
+
+reduce_1 [m3] (DBase.from_list [[m2;m4];[m5;m3]]);;
+reduce [m3;m1] (DBase.from_list [[m4;m1];[m5];[m2;m1];[m1]]);;
 
 mmul m1 m2;;
 
