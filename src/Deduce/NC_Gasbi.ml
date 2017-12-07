@@ -148,7 +148,8 @@ module DBase : sig
   val create : unit -> t
   val add : t -> pol -> unit
 
-  val get_all_prefix : t -> vars -> ((pol list * vars) list) 
+  val get_all_prefix_lt : t -> vars -> (pol list * vars) list
+  val get_all_prefix_gt : t -> vars -> pol list
   val from_list : pol list -> t
   val get_vson : t -> id_var -> t option
 end = struct 
@@ -185,23 +186,31 @@ end = struct
         | v :: vs -> aux (getupd_vson t v) vs in
       aux t m.vars
                  
-  let get_all_prefix =
+  let get_all_prefix_lt =
     let rec aux ps t vs = 
       match vs with 
       | [] -> ps 
       | v:: vs ->
         match get_vson t v with 
         | None -> ps
-        | Some t -> aux ((t.t_pols,vs) :: ps) t vs in
+        | Some t -> 
+          let ps = (t.t_pols,vs) :: ps in
+          aux ps t vs in
     aux []
 
+  let rec get_all_prefix_gt t vs =
+    match vs with 
+    | [] -> t.t_allp
+    | v:: vs ->
+      match get_vson t v with 
+      | None -> []
+      | Some t -> get_all_prefix_gt t vs 
+
   let from_list (polys:pol list)=
-    let rec add_list t (polys) =
-      match polys with
-        [] -> t
-       |p::q -> add t p; add_list t q
-    in
-    add_list (create ()) polys
+    let t = create () in
+    List.iter (add t) polys;
+    t
+
 end
 
 
@@ -210,16 +219,23 @@ end
 (* ------------------------------------------------------------------------- *)
 
 let rec get_all_products (m:vars) (polys:DBase.t) : pol list list =
-  let rec sub_sol (m:vars) (pol_prefs: (pol list*vars) list) =
+  let rec sub_sol (m:vars) (pol_prefs: (pol list * vars) list) =
     match pol_prefs with
     | [] -> []
-    | (p,r)::q -> match p with
-              |[] -> []
-              |pol::tail -> if r = [] then [pol]::(sub_sol m ((tail,r)::q))
-                                else let subsols = get_all_products r polys in
-                                     (List.map (fun a -> pol::a) subsols)@(sub_sol m ((tail,r)::q))
+    | (ps,r)::q -> 
+       if r = [] then 
+         List.map (fun p -> [p]) ps @ (sub_sol m q) 
+       else 
+         let subsols = get_all_products r polys in
+         let sols =
+           List.map (fun pol -> 
+               List.map (fun a -> pol::a) subsols) ps
+         in
+         let sols = List.flatten sols in
+         sols@(sub_sol m q)
   in
-sub_sol m (DBase.get_all_prefix polys m);;
+  sub_sol m (DBase.get_all_prefix_lt polys m);;
+
 
 
 (* return all the product K of polys such that the leading term of K is equal m *)
@@ -241,23 +257,28 @@ let rec get_all_products (m:id_var list) (polys:pol list) : pol list list =
  *)
 
 
+
+let mpoly_muls ps = 
+  match ps with
+  | []      -> []
+  | p :: ps -> 
+     List.fold_left (fun p acc -> mpoly_mul p acc ) p ps;;
+
+
 (* return all the possible one step reductions of a polynom wrt a base *)
 let reduce_1 (p:pol) (polys:DBase.t) =
   match p with
-    [] -> []
-   |m::_ -> let prods = get_all_products m.vars polys in
-            if prods = [] then []
-            else
-              let prods = List.map (fun prod ->
-                  match prod with
-                    [] -> []
-                   |p1::q1 -> List.fold_left (fun p acc -> mpoly_mul p acc ) p1 q1 
-                            ) prods in
-              List.map (fun prod ->
-                  match prod with
-                    [] -> []
-                   |m1::_ -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff)  prod) 
-                ) prods;; 
+  | [] -> []
+  | m::_ -> 
+    let prods = get_all_products m.vars polys in
+    if prods = [] then [p]
+    else
+      let prods = List.map mpoly_muls prods in
+      let sub_prod prod = 
+        match prod with
+        | []    -> p 
+        | m1::_ -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff) prod) in
+      List.map sub_prod prods
               
 (* compute all the possible reductions of p wrt polys *)
 let rec reduce (p:pol) (polys:DBase.t)=
@@ -287,7 +308,7 @@ let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
 let p1 = mpoly_add [m1] [m2];;
 mpoly_mul [m1] [m2;m1];;
 
-DBase.get_all_prefix    (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]) [1;2] ;;
+DBase.get_all_prefix_lt    (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]) [1;2] ;;
 
 get_all_products [1;2]   (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]);;
 
