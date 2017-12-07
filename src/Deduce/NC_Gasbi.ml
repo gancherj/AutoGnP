@@ -134,6 +134,10 @@ let rec mpoly_mul l1 l2 =
 
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
+(* ------------------------------------------------------------------------- *)
+(* Reduction of a polynom with respect to a base.                            *)
+(* ------------------------------------------------------------------------- *)
+
 (* return all the product K of polys sucht that the leading term of K cancels m *)
 let rec get_all_products (m:id_var list) (polys:pol list) =                  
     match polys with
@@ -149,7 +153,7 @@ let rec get_all_products (m:id_var list) (polys:pol list) =
                   (List.map (fun a-> pol::a) sub_sols)@(get_all_products m rpolys)
          with Failure _ -> get_all_products m rpolys;;
 
-(* return all the possible reductions of a polynom wrt a base *)
+(* return all the possible one step reductions of a polynom wrt a base *)
 let reduce_1 (p:pol) (polys:pol list) =
   match p with
     [] -> []
@@ -167,15 +171,16 @@ let reduce_1 (p:pol) (polys:pol list) =
                    |m1::_ -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff)  prod) 
                 ) prods;; 
               
-
-(* try to reduce p1 with respect to p2 
-let reduce (p1:pol) (p2:pol) =
-  match p2 with
-   [] _> failwith "reduce by zero"
-  |m::r -> if 
- *)
+(* compute all the possible reductions of p wrt polys *)
+let rec reduce (p:pol) (polys:pol list)=
+  let reduced_1 = reduce_1 p polys in
+  if reduced_1 = [] then [p]
+  else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
 
 
+
+
+(* Exemples *)
 let m1 = {coeff=Num.Int 1; vars=[1]; size=(2,2); length=1};;
 let m2 = {coeff=Num.Int 1; vars=[1;2]; size=(2,4); length=2};;
 let m3 = {coeff=Num.Int 1; vars=[1;1;2;]; size=(2,4); length=3};;
@@ -185,6 +190,8 @@ let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
 let p1 = mpoly_add [m1] [m2];;
 mpoly_mul [m1] [m2;m1];;
 
-reduce_1 [m3] [[m1];[m2;m1];[m4];[m5;m3]];;
+reduce_1 [m3] [[m2;m4];[m5;m3]];;
+reduce [m3;m1] [[m4;m1];[m5];[m2;m1];[m1]];;
+
 mmul m1 m2;;
 
