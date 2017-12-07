@@ -137,6 +137,65 @@ let rec mpoly_mul l1 l2 =
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
 (* ------------------------------------------------------------------------- *)
+
+type vars = id_var list
+
+module DBase : sig 
+  type t
+
+  val create : unit -> t
+  val add : t -> pol -> unit
+
+  val get_all_prefix : t -> vars -> (pol list) list 
+
+end = struct 
+
+  type t = 
+    { mutable t_pols : pol list;
+      mutable t_allp : pol list;
+              t_sons : (id_var, t) Hashtbl.t }
+
+  let create () = 
+    { t_pols = [];
+      t_allp = [];
+      t_sons = Hashtbl.create 17; }
+
+  let get_vson t v =
+    try Some (Hashtbl.find t.t_sons v)
+    with Not_found -> None 
+
+  let getupd_vson t v =
+    try Hashtbl.find t.t_sons v 
+    with Not_found ->
+      let t' = create () in
+      Hashtbl.add t.t_sons v t';
+      t'
+    
+  let add t p = 
+    match p with
+    | [] -> ()
+    | m::_ ->
+      let rec aux t vs = 
+        t.t_allp <- p :: t.t_allp;
+        match vs with
+        | []      -> t.t_pols <- p :: t.t_pols
+        | v :: vs -> aux (getupd_vson t v) vs in
+      aux t m.vars
+                 
+  let get_all_prefix =
+    let rec aux ps t vs = 
+      match vs with 
+      | [] -> ps 
+      | v:: vs ->
+        match get_vson t v with 
+        | None -> ps
+        | Some t -> aux (t.t_pols :: ps) t vs in
+    aux []
+
+end
+
+
+(* ------------------------------------------------------------------------- *)
 (* Reduction of a polynom with respect to a base.                            *)
 (* ------------------------------------------------------------------------- *)
 
