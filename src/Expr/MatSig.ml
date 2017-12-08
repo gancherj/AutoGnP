@@ -262,7 +262,7 @@ let matsig_rewrite_step (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim
     | _ -> m
 
     
-let norm_matsig_ nftop (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
+let norm_matsig_ (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
     match m with
     | MPlus xs -> MPlus (map nf xs)
     | MOpp x -> MOpp (nf x)
@@ -273,11 +273,11 @@ let norm_matsig_ nftop (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
     | MSplitRight x -> MSplitRight (nf x)
     | MId p -> MId p
     | MZero e -> MZero e
-    | MBase e -> MBase (nftop e)
+    | MBase e -> MBase e
 
-let rec norm_matsig (nftop : 'a -> 'a) (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : 'a matsig = 
-    let nf = norm_matsig nftop eq f in
-    let next = matsig_rewrite_step eq f (norm_matsig_ nftop nf m) in
+let rec norm_matsig (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : 'a matsig = 
+    let nf = norm_matsig eq f in
+    let next = matsig_rewrite_step eq f (norm_matsig_ nf m) in
     if (comp_matsig eq m next) then m else 
         nf next
     
