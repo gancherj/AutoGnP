@@ -50,7 +50,6 @@ type cnst =
   | B of bool   (* boolean value *)
   | MatZero
   | MatId
-  | ListOf of cnst
 
 type op =
   (* bilinear groups *)
@@ -79,6 +78,7 @@ type op =
   | MatSplitLeft
   | MatSplitRight
   | ListOp of op
+  | ListOf
 
 type nop =
   | GMult      (* multiplication in G (type defines group) *)
@@ -119,7 +119,6 @@ let rec cnst_hash = function
   | B b    -> if b then 4 else 5
   | MatZero-> 6
   | MatId -> 7
-  | ListOf c -> Hashcons.combine 8 (cnst_hash c)
 
 let rec op_hash = function
   | GExp gv        -> hcomb 1 (Groupvar.hash gv)
@@ -131,6 +130,7 @@ let rec op_hash = function
   | FDiv           -> 7
   | Eq             -> 8
   | ListOp o       -> hcomb 24 (op_hash o)
+  | ListOf         -> 25
   | MatMult        -> 18
   | MatOpp         -> 19
   | MatTrans       -> 20
@@ -281,7 +281,6 @@ let mk_False = mk_B false
 
 let mk_MatZero n m = mk_Cnst MatZero (mk_Mat n m)
 
-let mk_ListOfMatZero a n m = mk_Cnst (ListOf MatZero) (mk_List a (mk_Mat n m))
 
 let mk_MatId n m =
     ensure_mdim_equal n m;
@@ -417,6 +416,11 @@ let mk_ListMatTrans e1 = mk_ListOp MatTrans [e1]
 let mk_ListMatOpp e1 = mk_ListOp MatOpp [e1]
 let mk_ListMatSplitLeft e1 = mk_ListOp MatSplitLeft [e1]
 let mk_ListMatSplitRight e1 = mk_ListOp MatSplitRight [e1]
+
+let mk_ListOf d e = mk_App ListOf [e] (mk_List d e.e_ty)
+
+let mk_ListOfMatZero a n m = mk_ListOf a (mk_MatZero n m)
+
 
 let mk_MatMult a b =
     ensure_matmult_compat a.e_ty b.e_ty a (Some b) "mk_MatMult";

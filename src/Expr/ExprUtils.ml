@@ -121,6 +121,7 @@ let is_field_op = function
   | FunCall _  | MatMult | MatOpp | MatTrans | MatConcat |
   MatSplitLeft | MatSplitRight -> false
   | ListOp _ -> false
+  | ListOf -> false
 
 let is_field_nop = function
   | FPlus | FMult -> true
@@ -186,7 +187,6 @@ let rec pp_cnst fmt c ty =
   | B b    -> F.fprintf fmt "%b" b
   | MatZero -> F.fprintf fmt "0" 
   | MatId  -> F.fprintf fmt "I" 
-  | ListOf c-> F.fprintf fmt "[%a]" (fun fmt d -> pp_cnst fmt d ty) c
 
 (** Constructor above the current expression. *)
 type 'a above =
@@ -284,6 +284,8 @@ and pp_op_p ~qual above fmt (op, es) =
     F.fprintf fmt "%s%a%s" before (pp_exp_p ~qual (Infix(op,0))) a after
   in
   match op, es with
+  | ListOf, [a] ->
+    pp_prefix ListOf "[" "]" a
   | (MatSplitLeft | ListOp MatSplitLeft),   [a]   ->
     pp_prefix MatSplitLeft  "sl ("     ")"    a
   | (MatSplitRight | ListOp MatSplitRight),   [a]   ->

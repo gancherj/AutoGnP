@@ -18,7 +18,7 @@ let rec norm_mat_expr nftop e =
         nf ans
 
 let norm_ifte nfo e e1 e2 =
-    (* TODO do the pulling adds out thing *)
+    (* need to do the pulling out add thing *)
     let nf = norm_mat_expr nfo in
     Expr.mk_Ifte (nf e) (nf e1) (nf e2) 
 

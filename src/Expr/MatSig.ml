@@ -29,6 +29,7 @@ let rec is_bijection_by (comp : 'a -> 'a -> bool) (xs : 'a list) (ys : 'a list) 
             | (None, ys) -> false)
 
 
+
 type 'a matsig =
     | MPlus of ('a matsig) list
     | MOpp of ('a matsig)
@@ -40,6 +41,12 @@ type 'a matsig =
     | MId of (Type.mdim * Type.mdim)
     | MZero of (Type.mdim * Type.mdim)
     | MBase of 'a (* variables, uninterpreted functions, ... *)
+
+type ('a, 'b) listbase =
+    | LBase of 'a
+    | LOf of (Type.mdim * 'b matsig)
+
+
 
 let rec comp_matsig (f : 'a -> 'a -> bool) (m1 : 'a matsig) (m2 : 'a matsig) =
     match (m1,m2) with
@@ -55,6 +62,7 @@ let rec comp_matsig (f : 'a -> 'a -> bool) (m1 : 'a matsig) (m2 : 'a matsig) =
     | (MZero (a,b), MZero (c,d)) -> (a == c) && (b == d)
     | (MBase x, MBase y) -> f x y
     | _ -> false
+
 
 let rec mdim_of_matsig (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : Type.mdim *
 Type.mdim =
@@ -75,6 +83,35 @@ Type.mdim =
     | MId d -> d
     | MZero d -> d
     | MBase a -> f a
+
+
+let mk_listbase_eq (eqA : 'a -> 'a -> bool) (eqB : 'b -> 'b -> bool) (x : ('a,
+'b) listbase) (y: ('a, 'b) listbase) =
+    match x,y with
+    | LBase a, LBase b -> eqA a b
+    | LOf (d,a), LOf (d',b) -> (d == d') && (comp_matsig eqB a b)
+    | _, _ -> false
+
+let mk_listbase_dim (fA : 'a -> Type.mdim * Type.mdim) (fB : 'b -> Type.mdim *
+Type.mdim) m =
+    match m with
+    | LBase a -> fA a
+    | LOf (d,b) -> mdim_of_matsig fB b
+
+let rec listlen_of_matsig (f : 'a -> Type.mdim) (m : ('a,'b) listbase matsig) :
+    Type.mdim =
+        match m with
+        | MPlus xs -> listlen_of_matsig f (List.hd xs)
+        | MOpp x -> listlen_of_matsig f x
+        | MMult (x,y) -> listlen_of_matsig f x
+        | MTrans x -> listlen_of_matsig f x
+        | MConcat (x,y) -> listlen_of_matsig f x
+        | MSplitLeft x -> listlen_of_matsig f x
+        | MSplitRight x -> listlen_of_matsig f x
+        | MId d -> failwith "Id of list type"
+        | MZero d -> failwith "mzero of list type"
+        | MBase (LBase a) -> f a
+        | MBase (LOf (d,a)) -> d
 
 
 let rec matsig_of_mat_expr (e : expr) : expr matsig = 
@@ -109,8 +146,39 @@ let rec mat_expr_of_matsig (m : expr matsig) : expr =
     | MBase e -> e
 
     
-let matsig_of_matlist_expr (_ : expr) : expr matsig = failwith "unimp"
-let matlist_expr_of_matsig (_ : expr matsig) : expr = failwith "unimp"
+let rec matsig_of_matlist_expr (e : expr) :
+    (expr,expr) listbase matsig = 
+    match e.e_node with
+    | App(ListOp MatMult, [e1;e2]) -> MMult (matsig_of_matlist_expr e1, matsig_of_matlist_expr
+    e2)
+    | App(ListOp MatOpp, [e]) -> MOpp (matsig_of_matlist_expr e)
+    | App(ListOp MatTrans, [e]) -> MTrans (matsig_of_matlist_expr e)
+    | App(ListOp MatConcat, [e1;e2]) -> MConcat (matsig_of_matlist_expr e1,
+    matsig_of_matlist_expr e2)
+    | App(ListOp MatSplitLeft, [e]) -> MSplitLeft (matsig_of_matlist_expr e)
+    | App(ListOp MatSplitRight, [e]) -> MSplitRight (matsig_of_matlist_expr e)
+    | Nary(ListNop MatPlus, es) -> MPlus (map matsig_of_matlist_expr es)
+    | App(ListOf, [e]) -> MBase (LOf (fst (Type.get_list_ty e.e_ty), matsig_of_mat_expr e))
+    | _ -> MBase (LBase e)
+
+
+let rec matlist_expr_of_matsig (m : (expr, expr) listbase matsig) : expr = 
+    match m with
+    | MPlus ms -> 
+            mk_MatPlus (map matlist_expr_of_matsig ms)
+    | MOpp m -> mk_MatOpp (matlist_expr_of_matsig m)
+    | MMult (m1,m2) -> mk_MatMult (matlist_expr_of_matsig m1) (matlist_expr_of_matsig
+    m2)
+    | MTrans m -> mk_MatTrans (matlist_expr_of_matsig m)
+    | MConcat (m1,m2) -> mk_MatConcat (matlist_expr_of_matsig m1)
+    (matlist_expr_of_matsig m2)
+    | MSplitLeft m -> mk_MatSplitLeft (matlist_expr_of_matsig m)
+    | MSplitRight m -> mk_MatSplitRight (matlist_expr_of_matsig m)
+    | MZero p -> failwith "mzero in list"
+    | MId p -> failwith "mid in list"
+    | MBase (LBase e) -> e
+    | MBase (LOf (d,e)) -> mk_ListOf d (mat_expr_of_matsig e)
+
 
 let matsig_flatten_plus (xs : ('a matsig) list) : ('a matsig) list =
     let (plusses, others) = fold_left (fun acc x -> 
@@ -261,8 +329,21 @@ let matsig_rewrite_step (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim
     | MSplitRight (MMult (a,b)) -> MMult (a, MSplitRight b)
     | _ -> m
 
+let matsig_list_rewrite_step (f : ('a,'b) listbase -> Type.mdim * Type.mdim) (m : (('a,'b) listbase) matsig) =
+    match m with
+    | MMult (MBase (LOf (d,a)), MBase (LOf (d',b))) -> MBase (LOf (d, MMult (a,b)))
+    | MPlus [MBase (LOf (d,a)); MBase (LOf (d',b))] -> MBase (LOf (d, MPlus [a;b]))
+    | MMult (MBase (LOf (d, MId _)), a) -> a
+    | MMult (a, MBase (LOf (d, MId _))) -> a
+    | MMult (MBase (LOf (d, MZero p)), a) -> (MBase (LOf (d, MZero (fst p, snd (mdim_of_matsig f a)))))
+    | MMult (a, MBase (LOf (d, MZero p))) -> (MBase (LOf (d, MZero (fst
+    (mdim_of_matsig f a), snd p))))
+    | MConcat (MBase (LOf (d, MZero p1)), MBase (LOf (d', MZero p2))) ->
+            MBase (LOf (d, MZero (fst p1, Type.MDPlus (snd p1, snd p2))))
+    | _ -> m
+
     
-let norm_matsig_ (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
+let norm_matsig_rec (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
     match m with
     | MPlus xs -> MPlus (map nf xs)
     | MOpp x -> MOpp (nf x)
@@ -273,14 +354,28 @@ let norm_matsig_ (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
     | MSplitRight x -> MSplitRight (nf x)
     | MId p -> MId p
     | MZero e -> MZero e
-    | MBase e -> MBase e
+    | _ -> m
+
+let norm_matlist_rec (nf : 'a matsig -> 'a matsig) (m : (('a,'b) listbase)
+matsig) =
+    match m with
+    | MBase (LOf (d,e)) -> MBase (LOf (d, nf e))
+    | _ -> m
 
 let rec norm_matsig (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : 'a matsig = 
     let nf = norm_matsig eq f in
-    let next = matsig_rewrite_step eq f (norm_matsig_ nf m) in
+    let next = matsig_rewrite_step eq f (norm_matsig_rec nf m) in
     if (comp_matsig eq m next) then m else 
         nf next
     
+let rec norm_listmatsig (eqA : 'a -> 'a -> bool) (eqB : 'b -> 'b -> bool) 
+                        (fA : 'a -> Type.mdim * Type.mdim) (fB : 'b -> Type.mdim * Type.mdim)  
+                        (m: (('a,'b) listbase) matsig)
+                        : (('a,'b) listbase) matsig =
+    let nf = norm_listmatsig eqA eqB fA fB in
+    let recurs x = norm_matlist_rec (norm_matsig eqB fB) (norm_matsig_rec nf x) in
+    let next = matsig_list_rewrite_step (mk_listbase_dim fA fB) (matsig_rewrite_step (mk_listbase_eq eqA eqB) (mk_listbase_dim fA fB) (recurs m)) in
+    if (comp_matsig (mk_listbase_eq eqA eqB) m next) then m else nf next
 
 
 

@@ -12,11 +12,15 @@ type 'a matsig =
     | MZero of (Type.mdim * Type.mdim)
     | MBase of 'a (* variables, uninterpreted functions, ... *)
 
+type ('a, 'b) listbase =
+    | LBase of 'a
+    | LOf of (Type.mdim * 'b matsig)
+
 val matsig_of_mat_expr : expr -> expr matsig
 val mat_expr_of_matsig : expr matsig -> expr
 
-val matsig_of_matlist_expr : expr -> expr matsig
-val matlist_expr_of_matsig : expr matsig -> expr 
+val matsig_of_matlist_expr : expr -> (expr,expr) listbase matsig
+val matlist_expr_of_matsig : (expr,expr) listbase matsig -> expr 
 
 val matsig_rewrite_step : ('a -> 'a -> bool) -> ('a -> Type.mdim * Type.mdim) -> 'a matsig -> 'a matsig
 val norm_matsig : ('a -> 'a -> bool) -> ('a -> Type.mdim * Type.mdim) -> 'a matsig -> 'a matsig
