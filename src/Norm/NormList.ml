@@ -6,7 +6,7 @@ module ListMat : MATDATA = struct
     type shape = mdim * mdim * mdim
     type elt = LBase of expr | LOf of mdim * expr
     type mat =
-        | MPlus of mat list
+        | MPlus of shape * mat list
         | MOpp of mat
         | MMult of mat * mat
         | MTrans of mat
@@ -54,7 +54,10 @@ module ListMat : MATDATA = struct
         | App(ListOp MatConcat, [e1;e2]) -> MConcat (mat_of_expr e1, mat_of_expr e2)
         | App(ListOp MatSplitLeft, [e]) -> MSplitLeft (mat_of_expr e)
         | App(ListOp MatSplitRight, [e]) -> MSplitRight (mat_of_expr e)
-        | Nary(ListNop MatPlus, es) -> MPlus (List.map mat_of_expr es)
+        | Nary(ListNop MatPlus, es) -> 
+                let (a,f) = get_list_ty (List.hd es).e_ty in
+                let (b,c) = dim_of_mat f in
+                MPlus ((a,b,c), List.map mat_of_expr es)
         | App(ListOf, [e']) -> 
                 (match e'.e_node with
                 | Cnst (MatZero) -> let (a,f) = get_list_ty e.e_ty in
@@ -69,7 +72,7 @@ module ListMat : MATDATA = struct
 
     let rec expr_of_mat m = 
         match m with
-        | MPlus xs -> mk_ListNop MatPlus (List.map expr_of_mat xs)
+        | MPlus (_,xs) -> mk_ListNop MatPlus (List.map expr_of_mat xs)
         | MOpp x -> mk_ListMatOpp (expr_of_mat x)
         | MMult (x,y) -> mk_ListMatMult (expr_of_mat x) (expr_of_mat y)
         | MTrans x -> mk_ListMatTrans (expr_of_mat x)
@@ -81,8 +84,33 @@ module ListMat : MATDATA = struct
         | MBase (LOf (d,e)) -> mk_ListOf d e
         | MBase (LBase e) -> e
 
-    (* to fix *)
-    let extra_rewr m = m
+    let extra_rewr m =
+        let rec get_ofs xs =
+            match xs with
+            | ((MBase (LOf (d,e))) :: xs') -> 
+                    (match (get_ofs xs') with
+                    | Some (ofs) -> Some (e :: ofs)
+                    | None -> None)
+            | (_ :: xs') -> None
+            | [] -> Some ([])
+        in
+
+        let get_listofdim xs =
+            match (List.hd xs) with
+            | MBase (LOf (d,e)) -> d
+            | _ -> assert false
+        in
+
+        match m with
+        | MPlus (_,xs) ->
+                (match (get_ofs xs) with
+                | Some ([]) -> m
+                | Some ofs -> MBase (LOf (get_listofdim xs, mk_MatPlus ofs))
+                | _ -> m)
+
+        | MMult (MBase (LOf (d, e)), MBase (LOf (_, e'))) ->
+                MBase (LOf (d, mk_MatMult e e'))
+        | _ -> m
 
 end
 

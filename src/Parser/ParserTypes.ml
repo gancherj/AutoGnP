@@ -45,6 +45,7 @@ type parse_expr =
   | Trans       of parse_expr
   | SplitLeft   of parse_expr
   | SplitRight  of parse_expr
+  | PListOf     of parse_expr * parsedim
   | Minus       of parse_expr * parse_expr
   | Inv         of parse_expr
   | Div         of parse_expr * parse_expr

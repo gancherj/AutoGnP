@@ -6,7 +6,7 @@ module Mat : MATDATA = struct
     type elt = expr
     type shape = mdim * mdim
     type mat =
-        | MPlus of mat list
+        | MPlus of shape * mat list
         | MOpp of mat
         | MMult of mat * mat
         | MTrans of mat
@@ -33,13 +33,13 @@ module Mat : MATDATA = struct
         | App(MatConcat, [e1;e2]) -> MConcat (mat_of_expr e1, mat_of_expr e2)
         | App(MatSplitLeft, [e]) -> MSplitLeft (mat_of_expr e)
         | App(MatSplitRight, [e]) -> MSplitRight (mat_of_expr e)
-        | Nary(MatPlus, es) -> MPlus (List.map mat_of_expr es)
+        | Nary(MatPlus, es) -> MPlus (shape_of_elt (List.hd es), List.map mat_of_expr es)
         | Cnst(MatZero) -> let p = Type.dim_of_mat (e.e_ty) in MZero p
         | Cnst(MatId) -> MId (Type.dim_of_mat (e.e_ty))
         | _ -> MBase e
     let rec expr_of_mat m =
         match m with
-        | MPlus ms -> 
+        | MPlus (_,ms) -> 
                 mk_MatPlus (List.map expr_of_mat ms)
         | MOpp m -> mk_MatOpp (expr_of_mat m)
         | MMult (m1,m2) -> mk_MatMult (expr_of_mat m1) (expr_of_mat m2)

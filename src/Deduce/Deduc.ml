@@ -144,6 +144,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       
       | ListOp _ -> 
               add_sub e; List.iter (register_subexprs true) es 
+      | ListOf ->
+              add_sub e; List.iter (register_subexprs true) es 
 
       (*
       | FDiv ->

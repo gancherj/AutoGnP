@@ -17,7 +17,7 @@ module type MATDATA = sig
 
 
         type mat =
-            | MPlus of mat list
+            | MPlus of shape * mat list
             | MOpp of mat
             | MMult of mat * mat
             | MTrans of mat

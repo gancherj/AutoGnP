@@ -135,6 +135,7 @@ let is_field_exp e = match e.e_node with
 
 let is_list_op = function
     | ListOp _ -> true
+    | ListOf -> true
     | _ -> false
 
 let is_list_nop = function
@@ -177,7 +178,7 @@ let pp_number_tuples = ref false
 *)
 
 (** Pretty print constant. *)
-let rec pp_cnst fmt c ty =
+let pp_cnst fmt c ty =
   match c with
   | GGen   -> if Groupvar.name (destr_G_exn ty) <> ""
               then F.fprintf fmt "g_%a" Groupvar.pp (destr_G_exn ty)
@@ -373,6 +374,7 @@ and pp_nop_p ~qual above fmt (op,es) =
       | NInfix(FPlus) | Infix(FMinus,_) -> false
       | _ -> notsep above in
     pp_nary false FMult "@,*" p
+  | ListNop _ -> failwith "bad list nop"
 
 (** Pretty-print expressions/operators assuming they are topmost. *)
 let pp_expr fmt e = pp_exp_p ~qual:Unqual Top fmt e

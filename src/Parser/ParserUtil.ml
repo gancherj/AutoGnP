@@ -221,6 +221,7 @@ let rec expr_of_parse_expr (vmap : GU.vmap) ts (qual : string qual) pe0 =
     | Trans(e)       -> E.mk_MatTrans (go e)
     | SplitLeft(e)   -> E.mk_MatSplitLeft (go e)
     | SplitRight(e)   -> E.mk_MatSplitRight (go e)
+    | PListOf (e,d) -> E.mk_ListOf (create_dimvar ts d) (go e)
     | Quant(q,bd,pe) ->
       let b =
         List.map (fun (vs,oname) -> init_odef_params vmap ts ~qual:false oname vs) bd

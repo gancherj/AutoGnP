@@ -256,6 +256,7 @@ expr8 :
 | MINUS e1=expr8                          { Opp(e1) }
 | SPLITLEFT e=expr8                       { SplitLeft(e) }
 | SPLITRIGHT e=expr8                      { SplitRight(e) }
+| LBRACK e=expr8 RBRACK UNDERSCORE LCBRACE d=dimexp RCBRACE { PListOf (e,d) }
 | NOT e=expr8                             { Not(e) }
 | LOG LPAR e1=expr RPAR                   { Log(e1) }
 | l=paren_list0(COMMA,expr)               { mk_Tuple l }

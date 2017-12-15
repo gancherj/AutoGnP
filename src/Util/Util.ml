@@ -227,11 +227,6 @@ let num_list l = L.mapi (fun i a -> i+1,a) l
 
 let drop_last n xs = L.rev xs |> BatList.drop n |> L.rev
 
-let rec list_of_opt_list xs = match xs with
-    | [] -> []
-    | Some(x) :: xs -> x :: (list_of_opt_list xs)
-    | None :: xs -> list_of_opt_list xs
-
 (* ** String functions
  * ----------------------------------------------------------------------- *)
 

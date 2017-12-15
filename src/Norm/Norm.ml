@@ -176,7 +176,7 @@ and mk_simpl_op ~strong op l =
   | ( GExp _ | GLog _ | EMap _ | GInv
     | FOpp   | FMinus | FInv   | FDiv
     | Eq     | Ifte   | Not | MatMult | MatOpp | MatTrans | MatConcat
-    | MatSplitLeft | MatSplitRight | ListOp _ ), _ -> 
+    | MatSplitLeft | MatSplitRight | ListOp _ | ListOf ), _ -> 
             assert false (* field stuff handled by mk_simpl_field_expr; mat
             stuff handled by mk_simpl_mat_expr*)
 

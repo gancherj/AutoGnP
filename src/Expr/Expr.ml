@@ -112,7 +112,7 @@ let perm_type_hash = function
   | IsInv  -> 1
   | NotInv -> 2
 
-let rec cnst_hash = function
+let cnst_hash = function
   | GGen   -> 1
   | FNat n -> Hashcons.combine 2 n
   | Z      -> 3
@@ -386,13 +386,13 @@ let mk_ListNop nop es =
         | List (d,t) -> 
                 begin match t.ty_node with
                 | Mat (n,m) -> mk_nary "mk_ListPlus" true (ListNop MatPlus) es (mk_List d (mk_Mat n m))
-                | _ -> failwith (F.sprintf "Type error in listplus")
+                | _ -> failwith (F.sprintf "Type error in listplus1")
                 end
-        | _ -> failwith (F.sprintf "Type error in listplus")
+        | _ -> failwith (F.sprintf "Type error in listplus2")
         end
     | _ -> failwith (F.sprintf "Unrecognized list nop")
 
-let rec mk_ListOp op es =
+let mk_ListOp op es =
     match op,es with
     | MatMult, [a;b] -> 
         ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
