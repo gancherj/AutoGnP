@@ -25,7 +25,6 @@ module Mat : MATDATA = struct
     let elt_eq a b = equal_expr a b
     let shape_eq p1 p2 = Type.mdim_equal (fst p1) (fst p2) && Type.mdim_equal (snd p1) (snd p2)
     let shape_of_elt e = Type.dim_of_mat e.e_ty
-    let elt_of_expr e = e
     let rec mat_of_expr e =
         match e.e_node with
         | App(MatMult, [e1;e2]) -> MMult (mat_of_expr e1, mat_of_expr e2)
@@ -51,14 +50,11 @@ module Mat : MATDATA = struct
         | MZero p -> mk_MatZero (fst p) (snd p)
         | MId p -> mk_MatId (fst p) (snd p)
         | MBase e -> e
+
+    let extra_rewr m = m
   end
 
 module MatRules = MkMat(Mat)
-
-
-let get_dim (e : Expr.expr) = Type.dim_of_mat (e.Expr.e_ty)
-
-
 
 let rec norm_mat_expr nftop e = 
     let nf = norm_mat_expr nftop in

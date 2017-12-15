@@ -43,7 +43,6 @@ module type MATDATA = sig
 
         val shape_of_elt : elt -> shape
 
-        val elt_of_expr : expr -> elt
 
         type mat =
             | MPlus of mat list
@@ -61,6 +60,7 @@ module type MATDATA = sig
 
         val mat_of_expr : expr -> mat
         val expr_of_mat : mat -> expr
+        val extra_rewr : mat -> mat
 
     end
 
@@ -241,7 +241,7 @@ module MkMat : MATRULES = functor (Data : MATDATA) -> struct
             | MSplitRight (MPlus xs) -> MPlus (map (fun x -> MSplitRight x) xs)
             | MSplitRight (MConcat (_,b)) -> b
             | MSplitRight (MMult (a,b)) -> MMult (a, MSplitRight b)
-            | _ -> m
+            | _ -> Data.extra_rewr m
         in
 
         

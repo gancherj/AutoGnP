@@ -15,7 +15,6 @@ module type MATDATA = sig
 
         val shape_of_elt : elt -> shape
 
-        val elt_of_expr : expr -> elt
 
         type mat =
             | MPlus of mat list
@@ -32,6 +31,8 @@ module type MATDATA = sig
 
         val mat_of_expr : expr -> mat
         val expr_of_mat : mat -> expr
+
+        val extra_rewr : mat -> mat
     end
 
 module type MATRULES = functor (Data : MATDATA) -> sig
