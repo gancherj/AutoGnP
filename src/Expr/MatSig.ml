@@ -5,6 +5,7 @@ open Util
 let mk_log level = mk_logger "Norm.NormField" level "NormField.ml"
 let log_i  = mk_log Bolt.Level.INFO
 
+
 let rec zip xs ys =
     match (xs, ys) with
     | (x::xs', y::ys') -> 
@@ -28,42 +29,245 @@ let rec is_bijection_by (comp : 'a -> 'a -> bool) (xs : 'a list) (ys : 'a list) 
             | (Some _, ys') -> is_bijection_by comp xs' ys'
             | (None, ys) -> false)
 
+module type MATDATA = sig
+        type elt
+        type shape
+        val mult_shape : shape -> shape -> shape
+        val concat_shape : shape -> shape -> shape
+        val sl_shape : shape -> shape
+        val sr_shape : shape -> shape
+        val trans_shape : shape -> shape
+        
+        val elt_eq : elt -> elt -> bool
+        val shape_eq : shape -> shape -> bool
+
+        val shape_of_elt : elt -> shape
+
+        val elt_of_expr : expr -> elt
+
+        type mat =
+            | MPlus of mat list
+            | MOpp of mat
+            | MMult of mat * mat
+            | MTrans of mat
+            | MConcat of mat * mat
+            | MSplitLeft of mat
+            | MSplitRight of mat
+            | MId of shape
+            | MZero of shape
+            | MBase of elt
+        
 
 
-type 'a matsig =
-    | MPlus of ('a matsig) list
-    | MOpp of ('a matsig)
-    | MMult of ('a matsig) * ('a matsig)
-    | MTrans of 'a matsig
-    | MConcat of ('a matsig) * ('a matsig)
-    | MSplitLeft of 'a matsig
-    | MSplitRight of 'a matsig
-    | MId of (Type.mdim * Type.mdim)
-    | MZero of (Type.mdim * Type.mdim)
-    | MBase of 'a (* variables, uninterpreted functions, ... *)
+        val mat_of_expr : expr -> mat
+        val expr_of_mat : mat -> expr
 
-type ('a, 'b) listbase =
-    | LBase of 'a
-    | LOf of (Type.mdim * 'b matsig)
+    end
+
+module type MATRULES = functor (Data : MATDATA) -> sig
+    val norm_mat: Data.mat -> Data.mat
+end
+
+module MkMat : MATRULES = functor (Data : MATDATA) -> struct
+
+    open Data
+
+    (* TODO: let below take as argument extra rewrite rules, which ListMat can
+     * hook into. *) 
+    let rec norm_mat (m : Data.mat) : Data.mat = 
+
+        let rec mat_eq  (m1 : mat) (m2 : mat) =
+            match (m1,m2) with
+            | (MPlus xs, MPlus ys) -> 
+                    is_bijection_by mat_eq xs ys
+            | (MOpp x, MOpp y) -> mat_eq x y
+            | (MMult (x,y), MMult (x',y')) -> (mat_eq x x') && (mat_eq y y')
+            | (MTrans x, MTrans y) -> mat_eq x y
+            | (MConcat (x,y), MConcat (x', y')) -> (mat_eq x x') && (mat_eq y y')
+            | (MSplitLeft x, MSplitLeft y) -> mat_eq x y
+            | (MSplitRight x, MSplitRight y) -> mat_eq x y
+            | (MId s1, MId s2) -> Data.shape_eq s1 s2
+            | (MZero s1, MZero s2) -> Data.shape_eq s1 s2
+            | (MBase x, MBase y) -> Data.elt_eq x y
+            | _ -> false in
+
+        let rec shape_of_mat (m : mat) : shape =
+            match m with
+            | MPlus xs -> shape_of_mat (List.hd xs)
+            | MOpp x -> shape_of_mat x
+            | MMult (x,y) -> Data.mult_shape (shape_of_mat x) (shape_of_mat y)
+            | MTrans x -> Data.trans_shape (shape_of_mat x)
+            | MConcat (x,y) -> Data.concat_shape (shape_of_mat x) (shape_of_mat y)
+            | MSplitLeft x -> Data.sl_shape (shape_of_mat x)
+            | MSplitRight x -> Data.sr_shape (shape_of_mat x)
+            | MId s -> s
+            | MZero s -> s
+            | MBase e -> Data.shape_of_elt e in
+
+        let flatten_plus (xs : mat list) =
+            let (plusses, others) = fold_left (fun acc x ->
+                (match x with
+                | MPlus ys -> ((fst acc) @ ys, snd acc)
+                | e -> (fst acc, e :: (snd acc)))) ([], []) xs in
+            plusses @ others in
+
+        let mat_is_zero (m : mat) = match m with | MZero _ -> true | _ -> false
+        in
+         
+        (* given a list, remove pairs that are opposites of each other. *)
+        let rec mat_remove_opps (xs : mat list) =
+            match xs with
+            | [] -> []
+            | ((MOpp x) :: xs') ->
+                    (match (remove_by (mat_eq x) xs') with
+                    | (Some _, xs'') -> mat_remove_opps xs''
+                    | (None,_) -> (MOpp x) :: (mat_remove_opps xs'))
+            | (x :: xs') ->
+                    (match (remove_by (mat_eq (MOpp x)) xs') with
+                    | (Some _, xs'') -> mat_remove_opps xs''
+                    | (None, _) -> x :: (mat_remove_opps xs')) in
+
+        let is_concatpair (x : mat) (y : mat) =
+            match (x,y) with
+            | (MConcat (a,b), MConcat (c,d)) ->
+                    Data.shape_eq (shape_of_mat a) (shape_of_mat c) &&
+                    Data.shape_eq (shape_of_mat b) (shape_of_mat d) 
+            | _ -> false in
+
+        let combine_concatpair (x : mat) (y : mat) =
+            match (x,y) with
+            | (MConcat (a,b), MConcat (c,d)) ->
+                    MConcat (MPlus [a;c], MPlus [b;d])
+            | _ -> assert false in
+
+        let rec combine_concats_aux (x : mat) (xs : mat list) : mat * (mat list) =
+            match xs with
+            | [] -> (x, [])
+            | (x' :: xs') ->
+                    if is_concatpair x x' then 
+                        combine_concats_aux (combine_concatpair x x') xs'
+                    else
+                        let (a,b) = combine_concats_aux x xs' in
+                        (a, x' :: b) in
+        
+        let rec combine_concats (xs : mat list) : mat list =
+            match xs with
+            | [] -> []
+            | x :: xs ->
+                    let (x', xs') = combine_concats_aux x xs in
+                    x' :: (combine_concats xs') in
+
+        let rewrite_plus (xs : mat list) : mat =
+            let xs = flatten_plus xs in
+            let xs = List.filter (fun x -> not (mat_is_zero x)) xs in
+            let xs = mat_remove_opps xs in
+            let xs = combine_concats xs in
+            match (List.length xs) with
+            | 0 -> MZero (shape_of_mat (List.hd xs))
+            | _ -> MPlus xs in
+
+        
+        let is_splitpair x y =
+            match x,y with
+            | MSplitLeft x', MSplitRight y' -> mat_eq x' y'
+            | _ -> assert false
+        in
+
+        let rec accum_splitpair (so_far : mat list) (sls : mat list) (srs : mat list) =
+            match sls, srs with
+            | [], [] -> (so_far, [], [])
+            | [], srs -> (so_far, [], srs)
+            | sl::sls, srs ->
+                    match (remove_by (is_splitpair sl) srs) with
+                    | (Some _, srs) ->
+                            let e = (match sl with | MSplitLeft x -> x | _ -> assert
+                            false) in
+                            accum_splitpair (e :: so_far) sls srs
+                    | (None, srs) ->
+                            let (a,b,c) = accum_splitpair so_far sls srs in
+                            (a, sl::b, c)
+        in
+
+        let rem_splitpairs xs ys =
+            let (sl_xs, xs') = List.partition (fun x -> match x with | MSplitLeft _ ->
+                true | _ -> false) xs in
+            let (sr_ys, ys') = List.partition (fun x -> match x with | MSplitRight _ ->
+                true | _ -> false) ys in
+            let (matched_pairs, sls, srs) = accum_splitpair [] sl_xs sr_ys in
+            (matched_pairs, sls @ xs', srs @ ys')
+        in
+        
+        let mat_concatplus_simpl xs ys =
+            let (pairs, xs, ys) = rem_splitpairs xs ys in
+            match pairs with
+            | [] -> MConcat ((MPlus xs), (MPlus ys))
+            | _ -> MPlus (pairs @ [MConcat ((MPlus xs), (MPlus ys))])
+        in
+
+        (* Note this doesn't take into account ListOf reductions for lists, which must be done
+         * separately *)
+        let matsig_rewrite_step (m : mat) =
+            match m with
+            | MMult (a, MMult (b,c)) -> MMult (MMult (a,b), c)
+            | MMult (MId _, a) -> a
+            | MMult (a, MId _) -> a
+            | MMult (MZero p, a) -> MZero (Data.mult_shape p (shape_of_mat a))
+            | MMult (a, MZero p) -> MZero (Data.mult_shape (shape_of_mat a) p)
+            | MMult (MOpp a, MOpp b) -> MMult (a,b)
+            | MMult (MOpp a, b) -> MOpp (MMult (a,b))
+            | MMult (a, MOpp b) -> MOpp (MMult (a,b))
+            | MMult (a, MConcat (b,c)) -> MConcat (MMult (a,b), MMult (a,c))
+            | MMult (MPlus xs, y) -> MPlus (map (fun x -> MMult (x,y)) xs)
+            | MMult (y, MPlus xs) -> MPlus (map (fun x -> MMult (y,x)) xs)
+            | MOpp (MOpp e) -> e
+            | MOpp (MPlus xs) -> MPlus (map (fun x -> MOpp x) xs)
+            | MTrans (MMult (a,b)) -> MMult (MTrans b, MTrans a)
+            | MTrans (MOpp a) -> MOpp (MTrans a)
+            | MTrans (MPlus xs) -> MPlus (map (fun x -> MTrans x) xs)
+            | MTrans (MTrans a) -> a
+            | MPlus xs -> rewrite_plus xs
+            | MConcat (MSplitLeft a, MSplitRight b) -> 
+                    if mat_eq a b then a else m
+            | MConcat (MZero p1, MZero p2) ->
+                    MZero (Data.concat_shape p1 p2)
+            | MConcat (MOpp a, MOpp b) ->
+                    MOpp (MConcat (a,b))
+            | MConcat (MPlus xs, MPlus ys) -> mat_concatplus_simpl xs ys
+            | MSplitLeft (MOpp a) -> MOpp (MSplitLeft a)
+            | MSplitLeft (MPlus xs) -> MPlus (map (fun x -> MSplitLeft x) xs)
+            | MSplitLeft (MConcat (a,_)) -> a
+            | MSplitLeft (MMult (a,b)) -> MMult (a, MSplitLeft b)
+            | MSplitRight (MOpp a) -> MOpp (MSplitRight a)
+            | MSplitRight (MPlus xs) -> MPlus (map (fun x -> MSplitRight x) xs)
+            | MSplitRight (MConcat (_,b)) -> b
+            | MSplitRight (MMult (a,b)) -> MMult (a, MSplitRight b)
+            | _ -> m
+        in
+
+        
+        let norm_matsig_rec (nf : mat -> mat) (m : mat) =
+            match m with
+            | MPlus xs -> MPlus (map nf xs)
+            | MOpp x -> MOpp (nf x)
+            | MMult (x,y) -> MMult (nf x, nf y)
+            | MTrans x -> MTrans (nf x)
+            | MConcat (x,y) -> MConcat (nf x, nf y)
+            | MSplitLeft x -> MSplitLeft (nf x)
+            | MSplitRight x -> MSplitRight (nf x)
+            | _ -> m
+        in
+
+        let next = matsig_rewrite_step (norm_matsig_rec norm_mat m) in
+        if (mat_eq m next) then m else norm_mat next
+    
+end
 
 
 
-let rec comp_matsig (f : 'a -> 'a -> bool) (m1 : 'a matsig) (m2 : 'a matsig) =
-    match (m1,m2) with
-    | (MPlus xs, MPlus ys) -> 
-            is_bijection_by (comp_matsig f) xs ys
-    | (MOpp x, MOpp y) -> comp_matsig f x y
-    | (MMult (x,y), MMult (x',y')) -> (comp_matsig f x x') && (comp_matsig f y y')
-    | (MTrans x, MTrans y) -> comp_matsig f x y
-    | (MConcat (x,y), MConcat (x', y')) -> (comp_matsig f x x') && (comp_matsig f y y')
-    | (MSplitLeft x, MSplitLeft y) -> comp_matsig f x y
-    | (MSplitRight x, MSplitRight y) -> comp_matsig f x y
-    | (MId (a,b), MId (c,d)) -> (a == c) && (b == d)
-    | (MZero (a,b), MZero (c,d)) -> (a == c) && (b == d)
-    | (MBase x, MBase y) -> f x y
-    | _ -> false
 
-
+    (* depreciated code; will go in MATDATA implementations
+ *
+ *
 let rec mdim_of_matsig (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : Type.mdim *
 Type.mdim =
     match m with
@@ -83,6 +287,7 @@ Type.mdim =
     | MId d -> d
     | MZero d -> d
     | MBase a -> f a
+
 
 
 let mk_listbase_eq (eqA : 'a -> 'a -> bool) (eqB : 'b -> 'b -> bool) (x : ('a,
@@ -112,6 +317,8 @@ let rec listlen_of_matsig (f : 'a -> Type.mdim) (m : ('a,'b) listbase matsig) :
         | MZero d -> failwith "mzero of list type"
         | MBase (LBase a) -> f a
         | MBase (LOf (d,a)) -> d
+
+
 
 
 let rec matsig_of_mat_expr (e : expr) : expr matsig = 
@@ -180,154 +387,7 @@ let rec matlist_expr_of_matsig (m : (expr, expr) listbase matsig) : expr =
     | MBase (LOf (d,e)) -> mk_ListOf d (mat_expr_of_matsig e)
 
 
-let matsig_flatten_plus (xs : ('a matsig) list) : ('a matsig) list =
-    let (plusses, others) = fold_left (fun acc x -> 
-        (match x with
-        | MPlus ys -> ((fst acc) @ ys, snd acc)
-        | e -> (fst acc, e :: (snd acc)))) ([],[]) xs in
-    plusses @ others
 
-let matsig_is_zero (m : 'a matsig) =
-    match m with
-    | MZero _ -> true
-    | _ -> false
-
-
-let rec matsig_remove_opps (eq : 'a -> 'a -> bool) (xs : ('a matsig) list) =
-    match xs with
-    | [] -> []
-    | ((MOpp x) :: xs') ->
-            (match (remove_by (comp_matsig eq x) xs') with
-            | (Some _, xs'') -> matsig_remove_opps eq xs''
-            | (None, _) -> (MOpp x) :: (matsig_remove_opps eq xs'))
-    | (x :: xs') ->
-            (match (remove_by (comp_matsig eq (MOpp x)) xs') with
-            | (Some (_), xs'') -> matsig_remove_opps eq xs''
-            | (None, _) -> x :: (matsig_remove_opps eq xs'))
-
-let mdims_equal p1 p2 =
-    (Type.mdim_equal (fst p1) (fst p2)) && (Type.mdim_equal (snd p1) (snd p2))
-
-
-let is_concatpair f x y =
-    match (x,y) with
-    | (MConcat (a,b), MConcat (c,d)) ->
-            (mdims_equal (mdim_of_matsig f a) (mdim_of_matsig f c))
-            && (mdims_equal (mdim_of_matsig f b) (mdim_of_matsig f d))
-    | _ -> false
-
-let combine_concatpair x y =
-    match (x,y) with
-    | (MConcat (a,b), MConcat (c,d)) ->
-            MConcat (MPlus [a;c], MPlus [b;d])
-    | _ -> assert false
-
-
-let rec combine_concats_aux f x xs =
-    match xs with
-    | [] -> (x, [])
-    | (x' :: xs') ->
-            if is_concatpair f x x' then
-                let x'' = combine_concatpair x x' in
-                combine_concats_aux f x'' xs'
-            else
-                let (a,b) = combine_concats_aux f x xs' in
-                (a, x' :: b)
-
-let rec matsig_combine_concats (f : 'a -> Type.mdim * Type.mdim) (xs : ('a matsig) list) =
-    match xs with
-    | [] -> []
-    | x :: xs ->
-            let (x', xs') = combine_concats_aux f x xs in 
-            x' :: (matsig_combine_concats f xs')
-
-
-let matsig_rewrite_plus (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (xs : ('a matsig) list) : 'a matsig =
-    let xs = matsig_flatten_plus xs in
-    let xs = List.filter (fun x -> not (matsig_is_zero x)) xs in
-    let xs = matsig_remove_opps eq xs in
-    let xs = matsig_combine_concats f xs in
-    match (List.length xs) with
-    | 0 -> MZero (mdim_of_matsig f (List.hd xs))
-    | _ -> MPlus xs
-
-
-let is_splitpair eq sl sr =
-    match sl,sr with
-    | MSplitLeft x, MSplitRight y -> comp_matsig eq x y
-    | _ -> assert false
-
-
-let rec accum_splitpair eq so_far sls srs =
-    match sls, srs with
-    | [], [] -> (so_far, [], [])
-    | [], srs -> (so_far, [], srs)
-    | sl::sls, srs ->
-            match (remove_by (is_splitpair eq sl) srs) with
-            | (Some (_), srs) ->
-                    let e = (match sl with | MSplitLeft x -> x | _ -> assert
-                    false) in
-                    accum_splitpair eq (e :: so_far) sls srs
-            | (None, srs) ->
-                    let (a,b,c) = accum_splitpair eq so_far sls srs in
-                    (a, sl::b, c)
-
-
-let rem_splitpairs eq xs ys =
-    let (sl_xs, xs') = List.partition (fun x -> match x with | MSplitLeft _ ->
-        true | _ -> false) xs in
-    let (sr_ys, ys') = List.partition (fun x -> match x with | MSplitRight _ ->
-        true | _ -> false) ys in
-    let (matched_pairs, sls, srs) = accum_splitpair eq [] sl_xs sr_ys in
-    (matched_pairs, sls @ xs', srs @ ys')
-    
-let matsig_concatplus_simpl eq xs ys =
-    let (pairs, xs, ys) = rem_splitpairs eq xs ys in
-    match pairs with
-    | [] -> MConcat ((MPlus xs), (MPlus ys))
-    | _ -> MPlus (pairs @ [MConcat ((MPlus xs), (MPlus ys))])
-
-
-
-
-
-let matsig_rewrite_step (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) =
-    match m with
-    | MMult (a, MMult (b,c)) -> MMult (MMult (a,b), c)
-    | MMult (MId _, a) -> a
-    | MMult (a, MId _) -> a
-    | MMult (MZero p, a) -> MZero (fst p, snd (mdim_of_matsig f a))
-    | MMult (a, MZero p) -> MZero (fst (mdim_of_matsig f a), snd p)
-    | MMult (MOpp a, MOpp b) -> MMult (a,b)
-    | MMult (MOpp a, b) -> MOpp (MMult (a,b))
-    | MMult (a, MOpp b) -> MOpp (MMult (a,b))
-    | MMult (a, MConcat (b,c)) -> MConcat (MMult (a,b), MMult (a,c))
-    | MMult (MPlus xs, y) -> MPlus (map (fun x -> MMult (x,y)) xs)
-    | MMult (y, MPlus xs) -> MPlus (map (fun x -> MMult (y,x)) xs)
-    | MOpp (MOpp e) -> e
-    | MOpp (MPlus xs) -> MPlus (map (fun x -> MOpp x) xs)
-    | MTrans (MMult (a,b)) -> MMult (MTrans b, MTrans a)
-    | MTrans (MOpp a) -> MOpp (MTrans a)
-    | MTrans (MPlus xs) -> MPlus (map (fun x -> MTrans x) xs)
-    | MTrans (MTrans a) -> a
-    | MPlus xs -> matsig_rewrite_plus eq f xs
-    | MConcat (MSplitLeft a, MSplitRight b) -> 
-            if comp_matsig eq a b then a
-            else m
-    | MConcat (MZero p1, MZero p2) ->
-            MZero (fst p1, Type.MDPlus (snd p1, snd p2))
-    | MConcat (MOpp a, MOpp b) ->
-            MOpp (MConcat (a,b))
-    | MConcat (MPlus xs, MPlus ys) -> matsig_concatplus_simpl eq xs ys
-    | MSplitLeft (MOpp a) -> MOpp (MSplitLeft a)
-    | MSplitLeft (MPlus xs) -> MPlus (map (fun x -> MSplitLeft x) xs)
-    | MSplitLeft (MConcat (a,_)) -> a
-    | MSplitLeft (MMult (a,b)) -> MMult (a, MSplitLeft b)
-    | MSplitRight (MOpp a) -> MOpp (MSplitRight a)
-    | MSplitRight (MPlus xs) -> MPlus (map (fun x -> MSplitRight x) xs)
-    | MSplitRight (MConcat (_,b)) -> b
-    | MSplitRight (MMult (a,b)) -> MMult (a, MSplitRight b)
-    | _ -> m
 
 let matsig_list_rewrite_step (f : ('a,'b) listbase -> Type.mdim * Type.mdim) (m : (('a,'b) listbase) matsig) =
     match m with
@@ -342,19 +402,7 @@ let matsig_list_rewrite_step (f : ('a,'b) listbase -> Type.mdim * Type.mdim) (m 
             MBase (LOf (d, MZero (fst p1, Type.MDPlus (snd p1, snd p2))))
     | _ -> m
 
-    
-let norm_matsig_rec (nf : 'a matsig -> 'a matsig) (m : 'a matsig) =
-    match m with
-    | MPlus xs -> MPlus (map nf xs)
-    | MOpp x -> MOpp (nf x)
-    | MMult (x,y) -> MMult (nf x, nf y)
-    | MTrans x -> MTrans (nf x)
-    | MConcat (x,y) -> MConcat (nf x, nf y)
-    | MSplitLeft x -> MSplitLeft (nf x)
-    | MSplitRight x -> MSplitRight (nf x)
-    | MId p -> MId p
-    | MZero e -> MZero e
-    | _ -> m
+
 
 let norm_matlist_rec (nf : 'a matsig -> 'a matsig) (m : (('a,'b) listbase)
 matsig) =
@@ -362,12 +410,8 @@ matsig) =
     | MBase (LOf (d,e)) -> MBase (LOf (d, nf e))
     | _ -> m
 
-let rec norm_matsig (eq : 'a -> 'a -> bool) (f : 'a -> Type.mdim * Type.mdim) (m : 'a matsig) : 'a matsig = 
-    let nf = norm_matsig eq f in
-    let next = matsig_rewrite_step eq f (norm_matsig_rec nf m) in
-    if (comp_matsig eq m next) then m else 
-        nf next
-    
+
+
 let rec norm_listmatsig (eqA : 'a -> 'a -> bool) (eqB : 'b -> 'b -> bool) 
                         (fA : 'a -> Type.mdim * Type.mdim) (fB : 'b -> Type.mdim * Type.mdim)  
                         (m: (('a,'b) listbase) matsig)
@@ -376,6 +420,4 @@ let rec norm_listmatsig (eqA : 'a -> 'a -> bool) (eqB : 'b -> 'b -> bool)
     let recurs x = norm_matlist_rec (norm_matsig eqB fB) (norm_matsig_rec nf x) in
     let next = matsig_list_rewrite_step (mk_listbase_dim fA fB) (matsig_rewrite_step (mk_listbase_eq eqA eqB) (mk_listbase_dim fA fB) (recurs m)) in
     if (comp_matsig (mk_listbase_eq eqA eqB) m next) then m else nf next
-
-
-
+*)

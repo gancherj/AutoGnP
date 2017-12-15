@@ -1,26 +1,42 @@
 open Expr
 
-type 'a matsig =
-    | MPlus of ('a matsig) list
-    | MOpp of ('a matsig)
-    | MMult of ('a matsig) * ('a matsig)
-    | MTrans of 'a matsig
-    | MConcat of ('a matsig) * ('a matsig)
-    | MSplitLeft of 'a matsig
-    | MSplitRight of 'a matsig
-    | MId of (Type.mdim * Type.mdim)
-    | MZero of (Type.mdim * Type.mdim)
-    | MBase of 'a (* variables, uninterpreted functions, ... *)
 
-type ('a, 'b) listbase =
-    | LBase of 'a
-    | LOf of (Type.mdim * 'b matsig)
+module type MATDATA = sig
+        type elt
+        type shape
+        val mult_shape : shape -> shape -> shape
+        val concat_shape : shape -> shape -> shape
+        val sl_shape : shape -> shape
+        val sr_shape : shape -> shape
+        val trans_shape : shape -> shape
+        
+        val elt_eq : elt -> elt -> bool
+        val shape_eq : shape -> shape -> bool
 
-val matsig_of_mat_expr : expr -> expr matsig
-val mat_expr_of_matsig : expr matsig -> expr
+        val shape_of_elt : elt -> shape
 
-val matsig_of_matlist_expr : expr -> (expr,expr) listbase matsig
-val matlist_expr_of_matsig : (expr,expr) listbase matsig -> expr 
+        val elt_of_expr : expr -> elt
 
-val matsig_rewrite_step : ('a -> 'a -> bool) -> ('a -> Type.mdim * Type.mdim) -> 'a matsig -> 'a matsig
-val norm_matsig : ('a -> 'a -> bool) -> ('a -> Type.mdim * Type.mdim) -> 'a matsig -> 'a matsig
+        type mat =
+            | MPlus of mat list
+            | MOpp of mat
+            | MMult of mat * mat
+            | MTrans of mat
+            | MConcat of mat * mat
+            | MSplitLeft of mat
+            | MSplitRight of mat
+            | MId of shape
+            | MZero of shape
+            | MBase of elt
+        
+
+        val mat_of_expr : expr -> mat
+        val expr_of_mat : mat -> expr
+    end
+
+module type MATRULES = functor (Data : MATDATA) -> sig
+    val norm_mat: Data.mat -> Data.mat
+end
+
+module MkMat : MATRULES
+
