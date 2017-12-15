@@ -84,32 +84,18 @@ module ListMat : MATDATA = struct
         | MBase (LOf (d,e)) -> mk_ListOf d e
         | MBase (LBase e) -> e
 
+    (* [a + b] -> [a] + [b] *)
+    (* [a * b] -> [a] * [b] *)
     let extra_rewr m =
-        let rec get_ofs xs =
-            match xs with
-            | ((MBase (LOf (d,e))) :: xs') -> 
-                    (match (get_ofs xs') with
-                    | Some (ofs) -> Some (e :: ofs)
-                    | None -> None)
-            | (_ :: xs') -> None
-            | [] -> Some ([])
-        in
-
-        let get_listofdim xs =
-            match (List.hd xs) with
-            | MBase (LOf (d,e)) -> d
-            | _ -> assert false
-        in
-
         match m with
-        | MPlus (_,xs) ->
-                (match (get_ofs xs) with
-                | Some ([]) -> m
-                | Some ofs -> MBase (LOf (get_listofdim xs, mk_MatPlus ofs))
+        | MBase (LOf (d, e)) ->
+                (match e.e_node with
+                | Nary(MatPlus, es) -> 
+                        let (b,c) = dim_of_mat (List.hd es).e_ty in
+                        MPlus ((d,b,c), List.map (fun x -> MBase (LOf (d, x))) es)
+                | App(MatMult, [e1;e2]) ->
+                        MMult (MBase (LOf (d, e1)), MBase (LOf (d, e2)))
                 | _ -> m)
-
-        | MMult (MBase (LOf (d, e)), MBase (LOf (_, e'))) ->
-                MBase (LOf (d, mk_MatMult e e'))
         | _ -> m
 
 end

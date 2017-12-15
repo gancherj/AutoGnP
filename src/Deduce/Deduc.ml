@@ -228,6 +228,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | ListOp MatTrans, [e1] -> construct1 e e1 mk_ListMatTrans
     | ListOp MatSplitLeft, [e1] -> construct1 e e1 mk_ListMatSplitLeft
     | ListOp MatSplitRight, [e1] -> construct1 e e1 mk_ListMatSplitRight
+    | ListOf, [e1] -> 
+            let (d,_) = Type.get_list_ty (e.e_ty) in
+            construct1 e e1 (mk_ListOf d)
     | _, _ -> assert false
 
   in
