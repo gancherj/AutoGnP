@@ -142,21 +142,21 @@ let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 module DBase : sig 
  type t = 
     { mutable t_pols : pol list;
-      mutable t_allp : pol list;
+      mutable t_allp : (pol*vars) list;
               t_sons : (id_var, t) Hashtbl.t }
 
   val create : unit -> t
   val add : t -> pol -> unit
 
   val get_all_prefix_lt : t -> vars -> (pol list * vars) list
-  val get_all_prefix_gt : t -> vars -> pol list
+  val get_all_prefix_gt : t -> vars -> (pol*vars) list
   val from_list : pol list -> t
   val get_vson : t -> id_var -> t option
 end = struct 
 
   type t = 
     { mutable t_pols : pol list;
-      mutable t_allp : pol list;
+      mutable t_allp : (pol*vars) list;
               t_sons : (id_var, t) Hashtbl.t }
 
   let create () = 
@@ -180,7 +180,7 @@ end = struct
     | [] -> ()
     | m::_ ->
       let rec aux t vs = 
-        t.t_allp <- p :: t.t_allp;
+        t.t_allp <- (p,vs) :: t.t_allp;
         match vs with
         | []      -> t.t_pols <- p :: t.t_pols
         | v :: vs -> aux (getupd_vson t v) vs in
@@ -215,7 +215,7 @@ end
 
 
 (* ------------------------------------------------------------------------- *)
-(* Reduction of a polynom with respect to a base.                            *)
+(* Reduction of a monom with respect to a base.                            *)
 (* ------------------------------------------------------------------------- *)
 
 let rec get_all_products (m:vars) (polys:DBase.t) : pol list list =
@@ -236,26 +236,41 @@ let rec get_all_products (m:vars) (polys:DBase.t) : pol list list =
   in
   sub_sol m (DBase.get_all_prefix_lt polys m);;
 
+(* ------------------------------------------------------------------------- *)
+(* Computation of critical pairs.                                            *)
+(* ------------------------------------------------------------------------- *)
 
 
-(* return all the product K of polys such that the leading term of K is equal m *)
-(* TODO this is wrong ! *)
-(*
-let rec get_all_products (m:id_var list) (polys:pol list) : pol list list =                  
-    match polys with
-      [] -> []
-    | (pol)::rpolys ->
-       if pol = [] then get_all_products m rpolys
-       else
-         let h = List.hd pol in
-         try let (u,v) = is_prefix h.vars m in
-             if v=[] && u!=[] then get_all_products m rpolys
-             else if v=[] && u=[] then [pol]::(get_all_products m rpolys)
-             else let sub_sols = get_all_products v polys in
-                  (List.map (fun a-> pol::a) sub_sols)@(get_all_products m rpolys)
-         with NotPrefix -> get_all_products m rpolys;;
- *)
-
+let rec monom_critical_pairs (m:vars) (polys:DBase.t) : (pol list * pol list) list =
+  let products = get_all_products m polys in
+  if products <> [] then
+    List.map (fun l -> (l,[])) products
+  else
+    let rec sub_sol (pref: (pol list * vars) list) (suf: (pol * vars) list) =
+      match pref,suf with
+      |[],[] -> [([],[])]
+      |[],(ss,r)::q -> let subsols = monom_critical_pairs r polys in
+                        let sols =
+                              List.map (fun (l1,l2)-> ss::l2,l1) subsols
+                        in
+                        if sols != [] then
+                          sols
+                        else
+                          sub_sol pref q
+      |(ps,r)::q,sufs -> let subsols = monom_critical_pairs r polys in
+                        let sols =
+                          List.map (fun pol ->
+                              List.map (fun (l1,l2)-> pol::l1,l2) subsols) ps
+                        in
+                        if sols != [] then
+                          List.flatten sols
+                        else
+                          sub_sol q sufs
+    in
+    let sols = sub_sol (DBase.get_all_prefix_lt polys m) ((DBase.get_all_prefix_gt polys m)) in
+    sols;;
+                        
+                            
 
 
 let mpoly_muls ps = 
@@ -287,16 +302,6 @@ let rec reduce (p:pol) (polys:DBase.t)=
   else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
 
 
-(* ------------------------------------------------------------------------- *)
-(* Computation of critical pairs.                                            *)
-(* ------------------------------------------------------------------------- *)
-
-(*
-let rec monom_critical_pairs (m1 :id_var list) (m2:id_var list) : pol*pol list =
-  match is_prefix m1 m2 with
-    ([],[]) -> ([],[])  | ;;
-
- *)
 
 (* Exemples *)
 let m1 = {coeff=Num.Int 1; vars=[1]; size=(2,2); length=1};;
@@ -308,9 +313,15 @@ let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
 let p1 = mpoly_add [m1] [m2];;
 mpoly_mul [m1] [m2;m1];;
 
-DBase.get_all_prefix_lt    (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]) [1;2] ;;
+let base = DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]];;
+DBase.get_all_prefix_lt base [1;2] ;;
 
 get_all_products [1;2]   (DBase.from_list [[m1];[m2];[m2;m1];[m4];[m5]]);;
+
+let base2 =  DBase.from_list [[m3];[m5]];;
+
+monom_critical_pairs [1;1] base;;
+monom_critical_pairs [1;1] base2;;
 
 reduce_1 [m3] (DBase.from_list [[m2;m4];[m5;m3]]);;
 reduce [m3;m1] (DBase.from_list [[m4;m1];[m5];[m2;m1];[m1]]);;
