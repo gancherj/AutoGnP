@@ -137,6 +137,26 @@ let rec mpoly_mul l1 l2 =
 
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
+let polys_mul (l:pol list) =
+  match l with
+  |[] -> []
+  |p::pols ->
+    List.fold_right (fun pol acc -> mpoly_mul pol acc) pols p;;
+
+let mpoly_muls ps = 
+  match ps with
+  | []      -> []
+  | p :: ps -> 
+     List.fold_left (fun p acc -> mpoly_mul p acc ) p ps;;
+
+let s_poly (p1:pol) (p2:pol) =
+  match (p1,p2) with
+  |_,[] -> p1
+  |[],_ -> p2
+  |m1::_,m2::_-> match (m1.coeff,m2.coeff) with
+                    |Int 0,_ -> p2
+                    |_, Int 0 -> p1
+                    |c1,c2 -> mpoly_sub p1 (mpoly_cmul (c1//c2) p2);;
 (* ------------------------------------------------------------------------- *)
 
 module DBase : sig 
@@ -147,7 +167,7 @@ module DBase : sig
 
   val create : unit -> t
   val add : t -> pol -> unit
-
+  val mem : t -> pol -> bool
   val get_all_prefix_lt : t -> vars -> (pol list * vars) list
   val get_all_prefix_gt : t -> vars -> (pol*vars) list
   val from_list : pol list -> t
@@ -197,6 +217,18 @@ end = struct
           let ps = (t.t_pols,vs) :: ps in
           aux ps t vs in
     aux []
+
+   let mem t p =
+    let rec aux t vs = 
+      match vs with 
+      | [] -> List.mem p t.t_pols
+      | v::vs ->
+        match get_vson t v with 
+        | None -> false
+        | Some t -> aux t vs in
+    match p with
+    |[] -> List.mem p t.t_pols
+    |mon::_ -> aux t mon.vars
 
   let rec get_all_prefix_gt t vs =
     match vs with 
@@ -269,16 +301,27 @@ let rec monom_critical_pairs (m:vars) (polys:DBase.t) : (pol list * pol list) li
     in
     let sols = sub_sol (DBase.get_all_prefix_lt polys m) ((DBase.get_all_prefix_gt polys m)) in
     sols;;
-                        
-                            
 
 
-let mpoly_muls ps = 
-  match ps with
-  | []      -> []
-  | p :: ps -> 
-     List.fold_left (fun p acc -> mpoly_mul p acc ) p ps;;
+(* ------------------------------------------------------------------------- *)
+(* Computation of the S polynoms.                                            *)
+(* ------------------------------------------------------------------------- *)
 
+
+let new_Spolys (p:pol)  (polys:DBase.t) : pol list =
+  match p with
+  |[] -> []
+  |mon::_ ->
+    let pairs = monom_critical_pairs mon.vars polys in 
+    List.map (fun (ps1,ps2) -> s_poly (mpoly_muls ps1) (mpoly_muls (p::ps2)) ) pairs;;
+   
+
+
+
+
+(* ------------------------------------------------------------------------- *)
+(* Computation of the S polynoms.                                            *)
+(* ------------------------------------------------------------------------- *)
 
 (* return all the possible one step reductions of a polynom wrt a base *)
 let reduce_1 (p:pol) (polys:DBase.t) =
@@ -286,21 +329,62 @@ let reduce_1 (p:pol) (polys:DBase.t) =
   | [] -> []
   | m::_ -> 
     let prods = get_all_products m.vars polys in
-    if prods = [] then [p]
+    if prods = [] then
+      [p]
     else
+      (
       let prods = List.map mpoly_muls prods in
       let sub_prod prod = 
         match prod with
         | []    -> p 
         | m1::_ -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff) prod) in
       List.map sub_prod prods
+      )
               
 (* compute all the possible reductions of p wrt polys *)
 let rec reduce (p:pol) (polys:DBase.t)=
-  let reduced_1 = reduce_1 p polys in
-  if reduced_1 = [] then [p]
-  else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
+  if DBase.mem polys p then
+    [[]]
+  else
+    let reduced_1 = reduce_1 p polys in
+    if reduced_1 = [] || reduced_1 = [p] then [p]
+    else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
 
+(* ------------------------------------------------------------------------- *)
+(* Is a polynom deducible ?                                                  *)
+(* ------------------------------------------------------------------------- *)
+
+let deduce (p:pol) (polys:pol list)=
+  let rec aux (p:pol) (base:DBase.t) (acc:pol list) =
+    let reduces = reduce p base in
+    if (List.mem [] reduces) then
+      true          (* if the polynom reduces to 0, we have a base *)
+    else
+      (
+        match acc with
+        |[] -> false   (* if we already considered all the possible critical pairs, it is over *)
+        |[]::accs -> aux p base accs
+        |pol::accs ->
+          let s_polys = new_Spolys pol base in
+          (* for each s_polys, we compute its different reductions, and if they are not null
+             we add them to the base and to the accumulators *)
+          let new_acc = List.fold_right
+                          (fun s_poly acc ->
+                              let reduces = reduce s_poly base in
+                              let res = ref acc in
+                              List.iter (fun reduced ->
+                                  if reduced<>[] then
+                                    DBase.add base reduced;
+                                    res := reduced::!res    
+                                ) reduces;
+                                !res
+                              
+                          ) s_polys [] in
+          aux p base (accs @ new_acc)
+      ) in
+  aux p (DBase.from_list polys) polys;;
+    
+    
 
 
 (* Exemples *)
@@ -326,5 +410,11 @@ monom_critical_pairs [1;1] base2;;
 reduce_1 [m3] (DBase.from_list [[m2;m4];[m5;m3]]);;
 reduce [m3;m1] (DBase.from_list [[m4;m1];[m5];[m2;m1];[m1]]);;
 
-mmul m1 m2;;
-
+let lb =  [[m2];[m2;m1]];;
+get_all_products m1.vars (DBase.from_list lb);;
+reduce_1 [m1] (DBase.from_list lb);;
+deduce [m1] lb;;
+deduce [m2] lb;;
+deduce [m3] lb;;
+deduce [m4] lb;;
+deduce [m5] lb;;
