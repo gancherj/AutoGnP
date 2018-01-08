@@ -69,11 +69,41 @@ type i_var_set = int list;;
 let mk_vmon (i:id_var) (size: id_size*id_size) :mon=
   {coeff = Num.Int 1; vars = [i]; length = 1; size};;
 
+let is_null_mon (m:mon) =
+   m.length=0 || (List.for_all (fun var -> var<0) m.vars)
+
 let is_null (p:pol) : bool =
   match p with
   |[]-> true
-  |m::_ -> (m.length=0)
+  |m::_ -> is_null_mon m
 
+let get_hd (p:pol) =
+  if is_null p then
+    None
+  else
+    Some (List.hd p)
+
+let rec equals (p1:pol) (p2:pol) =
+  match (get_hd p1,get_hd p2) with
+       |None,None -> true
+       |None, _ -> false
+       |_,None -> false
+       |Some m1,Some m2 -> m1=m2 && equals (List.tl p1) (List.tl p2)
+
+let rec remainder (p:pol) =
+  match p with
+  |[] -> []
+  |m::q -> if is_null_mon m then
+             p
+           else
+             remainder q
+
+let null_mon =
+   { coeff = Int 0;
+    vars = [];
+    length = 0;
+    size = (1,1);
+  };;
 (* ------------------------------------------------------------------------- *)
 (* Operations on monomials.                                                  *)
 (* ------------------------------------------------------------------------- *)
@@ -82,13 +112,18 @@ let veq_mon (m1:mon) (m2:mon) =
   (m1.length = m2.length ) && m1.vars=m2.vars;;
 
 let mmul (m1:mon) (m2:mon) :mon  =
- if snd(m1.size) = fst(m2.size) then
+  if snd(m1.size) = fst(m2.size) then
   { coeff = m1.coeff*/m2.coeff;
     vars = m1.vars@m2.vars;
     length = m1.length + m2.length;
     size = (fst(m1.size),snd(m2.size));
   }
- else failwith "Monoms sizes uncompatible";;
+ else if m2.size=(-1,-1) then
+   null_mon 
+ else if m1.size=(-1,-1) then
+   null_mon 
+ else
+   failwith "Monoms sizes uncompatible";;
 
 exception NotPrefix;;
 
@@ -108,7 +143,7 @@ let rec is_prefix (m1:id_var list) (m2:id_var list) =
 (* ------------------------------------------------------------------------- *)
 
 let morder_lt m1 m2 =
-  m1.length < m2.length || m1.length = m2.length &&  lexord_lt(<) m1.vars m2.vars;;
+   m1.length < m2.length || (m1.length = m2.length &&  lexord_lt(<) m1.vars m2.vars);;
 
 (* ------------------------------------------------------------------------- *)
 (* Arithmetic on canonical multivariate polynomials.                         *)
@@ -122,10 +157,18 @@ let mpoly_mmul cm (pol:pol) :pol = map (mmul cm) pol;;
 
 let mpoly_neg (pol) :pol = map (fun m -> {m with coeff=minus_num m.coeff}) pol ;;
 
+let rec remove_null_mon (p:pol) =
+  match p with
+  |[] -> []
+  |m::q -> if m.coeff = Int 0 then
+             remove_null_mon q
+           else
+             m::(remove_null_mon q);;
+
 let rec mpoly_add (l1:pol) (l2:pol):pol =
   match (l1,l2) with
-    ([],_) -> l2
-  | (_,[]) -> l1
+    ([],_) -> remove_null_mon l2
+  | (_,[]) -> remove_null_mon l1
   | (m1::o1,m2::o2) ->
         if veq_mon m1 m2 then
           let c = m1.coeff+/m2.coeff and rest = mpoly_add o1 o2 in
@@ -134,11 +177,17 @@ let rec mpoly_add (l1:pol) (l2:pol):pol =
         else if morder_lt m2 m1 then m1::(mpoly_add o1 l2)
         else m2::(mpoly_add l1 o2);;
 
-let rec mpoly_mul l1 l2 =
-  match (l1,l2) with
-    (_,[]) -> []
-   |([],_)-> []
-   |(p::q,l2) -> mpoly_add (mpoly_mmul p l2) (mpoly_mul q l2);;
+
+let mpoly_mul l1 l2 =
+  let rec aux_mul l1 l2 =
+    match (l1,l2) with
+      (_,[]) -> []
+     |([],_)-> []
+     |(p::q,l2) ->mpoly_add (mpoly_mmul p l2) (aux_mul q l2) in
+  match (is_null l1, is_null l2) with
+          |(false,false) ->  aux_mul l1 l2
+          |_,_ -> [];;
+
 
 let mpoly_sub l1 l2 = mpoly_add l1 (mpoly_neg l2);;
 
@@ -153,6 +202,14 @@ let mpoly_muls ps =
   | []      -> []
   | p :: ps -> 
      List.fold_left (fun p acc -> mpoly_mul p acc ) p ps;;
+
+
+mpoly_muls  [[{coeff = Int 1; vars = [1]; length = 1; size = (2, 2)};
+    {coeff = Int (-1); vars = [-1]; length = 0; size = (-1, -1)};
+    {coeff = Int 1; vars = [-2]; length = 0; size = (-1, -1)}];
+   [{coeff = Int 1; vars = [1]; length = 1; size = (2, 2)};
+    {coeff = Int (-1); vars = [-1]; length = 0; size = (-1, -1)};
+    {coeff = Int 1; vars = [-2]; length = 0; size = (-1, -1)}]];;
 
 let s_poly (p1:pol) (p2:pol) =
   match (p1,p2) with
@@ -314,13 +371,12 @@ let rec monom_critical_pairs (m:vars) (polys:DBase.t) : (pol list * pol list) li
 
 
 let new_Spolys (p:pol)  (polys:DBase.t) : pol list =
-  match p with
-  |[] -> []
-  |mon::_ ->
+  match (get_hd p) with
+  |None -> []
+  |Some mon ->
     let pairs = monom_critical_pairs mon.vars polys in 
     List.map (fun (ps1,ps2) -> s_poly (mpoly_muls ps1) (mpoly_muls (p::ps2)) ) pairs;;
    
-
 
 
 
@@ -330,9 +386,9 @@ let new_Spolys (p:pol)  (polys:DBase.t) : pol list =
 
 (* return all the possible one step reductions of a polynom wrt a base *)
 let reduce_1 (p:pol) (polys:DBase.t) =
-  match p with
-  | [] -> []
-  | m::_ -> 
+  match (get_hd p) with
+  | None -> []
+  | Some m -> 
     let prods = get_all_products m.vars polys in
     if prods = [] then
       [p]
@@ -340,11 +396,12 @@ let reduce_1 (p:pol) (polys:DBase.t) =
       (
       let prods = List.map mpoly_muls prods in
       let sub_prod prod = 
-        match prod with
-        | []    -> p 
-        | m1::_ -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff) prod) in
+        match (get_hd prod) with
+        | None    -> p 
+        | Some m1 -> mpoly_sub p (mpoly_cmul (m.coeff//m1.coeff) prod) in
       List.map sub_prod prods
-      )
+      );;
+
               
 (* compute all the possible reductions of p wrt polys *)
 let rec reduce (p:pol) (polys:DBase.t)=
@@ -352,8 +409,13 @@ let rec reduce (p:pol) (polys:DBase.t)=
     [[]]
   else
     let reduced_1 = reduce_1 p polys in
-    if reduced_1 = [] || reduced_1 = [p] then [p]
-    else List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
+    match reduced_1 with
+    |[] -> [p]
+    |[q] -> if equals p q then [p]
+            else
+              List.flatten (List.map (fun p -> reduce p polys) reduced_1)
+    |_ ->  List.flatten (List.map (fun p -> reduce p polys) reduced_1);;
+
 
 (* ------------------------------------------------------------------------- *)
 (* Is a polynom deducible ?                                                  *)
@@ -389,13 +451,55 @@ let deduce (p:pol) (polys:pol list)=
       ) in
   aux p (DBase.from_list polys) polys;;
     
-    
 
+
+ let rec aux_get_inv (p:pol) (base:DBase.t) (acc:pol list) =
+   let reduces = reduce p base in
+   let rec get_null (reduced:pol list) =
+     match reduced with
+     |[] -> None
+     |p::q -> if is_null p then Some (p) else get_null q
+   in
+   match (get_null reduces) with
+   | Some (p) -> p
+   | None ->
+      (
+        match acc with
+        |[] -> failwith "No inverter found"   (* if we already considered all the possible critical pairs, it is over *)
+        |[]::accs -> aux_get_inv p base accs
+        |pol::accs ->
+          let s_polys = new_Spolys pol base in
+          (* for each s_polys, we compute its different reductions, and if they are not null
+             we add them to the base and to the accumulators *)
+          let new_acc = List.fold_right
+                          (fun s_poly acc ->
+                            let reduces = reduce s_poly base in
+                            let res = ref acc in
+                            List.iter (fun reduced ->
+                                if not(is_null reduced) then
+                                  DBase.add base reduced;
+                                res := reduced::!res    
+                              ) reduces;
+                            !res
+                             
+                          ) s_polys [] in
+          aux_get_inv p base (accs @ new_acc)
+      );;
+
+
+let inverter (p:pol) (polys:pol list)=
+  let acc = ref 0 in
+  let polys = List.map (fun pol ->
+                  acc := !acc - 1;
+                pol@[{coeff=Num.Int 1; vars=[!acc]; size=(-1,-1);length=0}]) polys
+  in
+  let inv = aux_get_inv p (DBase.from_list polys) polys in
+  mpoly_cmul (Int (-1)) inv;;
 
 (* Exemples *)
 let m1 = {coeff=Num.Int 1; vars=[1]; size=(2,2); length=1};;
 let m2 = {coeff=Num.Int 1; vars=[1;2]; size=(2,4); length=2};;
-let m3 = {coeff=Num.Int 1; vars=[1;1;2;]; size=(2,4); length=3};;
+let m3 = {coeff=Num.Int 1; vars=[1;1;2]; size=(2,4); length=3};;
 let m4 = {coeff=Num.Int 1; vars=[1;1]; size=(2,2); length=2};;
 let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
 
@@ -415,6 +519,7 @@ monom_critical_pairs [1;1] base2;;
 reduce_1 [m3] (DBase.from_list [[m2;m4];[m5;m3]]);;
 reduce [m3;m1] (DBase.from_list [[m4;m1];[m5];[m2;m1];[m1]]);;
 
+
 let lb =  [[m2];[m2;m1]];;
 get_all_products m1.vars (DBase.from_list lb);;
 reduce_1 [m1] (DBase.from_list lb);;
@@ -423,3 +528,8 @@ deduce [m2] lb;;
 deduce [m3] lb;;
 deduce [m4] lb;;
 deduce [m5] lb;;
+inverter [m1] lb;;
+inverter [m2] lb;;
+inverter [m3] lb;;
+inverter [m4] lb;;
+inverter [m5] lb;;
