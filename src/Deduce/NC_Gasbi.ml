@@ -67,7 +67,12 @@ type pol = mon list;;
 type i_var_set = int list;;
 
 let mk_vmon (i:id_var) (size: id_size*id_size) :mon=
-  {coeff = Num.Int 1; vars = [i]; length = 1; size};; 
+  {coeff = Num.Int 1; vars = [i]; length = 1; size};;
+
+let is_null (p:pol) : bool =
+  match p with
+  |[]-> true
+  |m::_ -> (m.length=0)
 
 (* ------------------------------------------------------------------------- *)
 (* Operations on monomials.                                                  *)
@@ -357,7 +362,7 @@ let rec reduce (p:pol) (polys:DBase.t)=
 let deduce (p:pol) (polys:pol list)=
   let rec aux (p:pol) (base:DBase.t) (acc:pol list) =
     let reduces = reduce p base in
-    if (List.mem [] reduces) then
+    if (List.exists is_null reduces) then
       true          (* if the polynom reduces to 0, we have a base *)
     else
       (
@@ -373,7 +378,7 @@ let deduce (p:pol) (polys:pol list)=
                               let reduces = reduce s_poly base in
                               let res = ref acc in
                               List.iter (fun reduced ->
-                                  if reduced<>[] then
+                                  if not(is_null reduced) then
                                     DBase.add base reduced;
                                     res := reduced::!res    
                                 ) reduces;
