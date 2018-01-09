@@ -1,5 +1,7 @@
 open List
 open Num
+open MatSig
+
 
 let rec itlist f l b =
   match l with
@@ -27,30 +29,54 @@ let rec distinctpairs l =
 (* ------------------------------------------------------------------------- *)
 (* Defining polynomial types                                                 *)
 (* ------------------------------------------------------------------------- *)
+    
+type id_var = int
+type vars = id_var list
 
-type id_var = int;;
+module type MON = sig
+    type shape
+    val default_shape : shape
+    val mult_shape_compat : shape -> shape -> bool
+    val neg_shape : shape
+    val mult_shape : shape -> shape -> shape
+    val shape_eq : shape -> shape -> bool
+    type mon = {
+        coeff : Num.num;
+        vars : vars;
+        length : int;
+        size : shape
+    }
 
-type id_size = int;;
+    type pol = mon list
+end
 
-type vars = id_var list;;
+module MkMon (Data : MATDATA) : MON = struct
+    type shape = Data.shape
+    let default_shape = Data.default_shape
+    let mult_shape_compat = Data.mult_shape_compat
+    let neg_shape = Data.neg_shape
+    let mult_shape = Data.mult_shape
+    let shape_eq = Data.shape_eq
+    type mon = {
+        coeff : Num.num;
+        vars : vars;
+        length : int;
+        size : shape
+    }
+    type pol = mon list
+end
 
-type mon =
-  { coeff : Num.num;
-    vars : vars;
-    length : int;
-    size : id_size * id_size;
-  };;
+module MkGasbi = functor (Mon : MON) -> struct
 
-type pol = mon list;;
-
+open Mon
 (* type pol_i = mon list * Expr.expr; *)
 
 type i_var_set = int list;;
 
-let mk_vmon (i:id_var) (size: id_size*id_size) :mon=
-  {coeff = Num.Int 1; vars = [i]; length = 1; size};;
+let mk_vmon (i:id_var) (size: Mon.shape) : Mon.mon=
+  {Mon.coeff = Num.Int 1; Mon.vars = [i]; Mon.length = 1; size};;
 
-let is_null_mon (m:mon) =
+let is_null_mon (m:Mon.mon) =
    m.length=0 || (List.for_all (fun var -> var<0) m.vars)
 
 let is_null (p:pol) : bool =
@@ -83,7 +109,7 @@ let null_mon =
    { coeff = Int 0;
     vars = [];
     length = 0;
-    size = (1,1);
+    size = default_shape;
   };;
 (* ------------------------------------------------------------------------- *)
 (* Operations on monomials.                                                  *)
@@ -93,15 +119,15 @@ let veq_mon (m1:mon) (m2:mon) =
   (m1.length = m2.length ) && m1.vars=m2.vars;;
 
 let mmul (m1:mon) (m2:mon) :mon  =
-  if snd(m1.size) = fst(m2.size) then
+  if mult_shape_compat (m1.size) (m2.size) then
   { coeff = m1.coeff*/m2.coeff;
     vars = m1.vars@m2.vars;
     length = m1.length + m2.length;
-    size = (fst(m1.size),snd(m2.size));
+    size = mult_shape (m1.size) (m2.size);
   }
- else if m2.size=(-1,-1) then
+ else if shape_eq (m2.size) (neg_shape) then
    null_mon 
- else if m1.size=(-1,-1) then
+ else if shape_eq (m1.size) (neg_shape) then
    null_mon 
  else
    failwith "Monoms sizes uncompatible";;
@@ -466,7 +492,9 @@ let inverter (p:pol) (polys:pol list)=
   let acc = ref 0 in
   let polys = List.map (fun pol ->
                   acc := !acc - 1;
-                pol@[{coeff=Num.Int 1; vars=[!acc]; size=(-1,-1);length=0}]) polys
+                pol@[{coeff=Num.Int 1; vars=[!acc]; size=neg_shape;length=0}]) polys
   in
   let inv = aux_get_inv p (DBase.from_list polys) polys in
   mpoly_cmul (Int (-1)) inv;;
+
+end

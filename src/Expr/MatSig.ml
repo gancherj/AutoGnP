@@ -32,6 +32,10 @@ module type MATDATA = sig
 
         val shape_of_elt : elt -> shape
 
+        (* used for groebner basis stuff *)
+        val default_shape : shape
+        val mult_shape_compat : shape -> shape -> bool
+        val neg_shape : shape
 
         type mat =
             | MPlus of shape * mat list
@@ -253,6 +257,8 @@ module MkMat : MATRULES = functor (Data : MATDATA) -> struct
         if (mat_eq m next) then m else norm_mat next
     
 end
+
+
 
 
 
