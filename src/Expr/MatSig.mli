@@ -13,12 +13,17 @@ module type MATDATA = sig
         val elt_eq : elt -> elt -> bool
         val shape_eq : shape -> shape -> bool
 
+        val shape_of_expr : expr -> shape
         val shape_of_elt : elt -> shape
+
+        val expr_of_elt : elt -> expr
+        val elt_of_expr : expr -> elt
 
         (* used for groebner basis stuff *)
         val default_shape : shape
         val mult_shape_compat : shape -> shape -> bool
         val neg_shape : shape
+        val shape_splittable : shape -> bool
 
 
         type mat =
@@ -38,6 +43,8 @@ module type MATDATA = sig
         val expr_of_mat : mat -> expr
 
         val extra_rewr : mat -> mat
+        val id_of_shape : shape -> expr
+
     end
 
 module type MATRULES = functor (Data : MATDATA) -> sig

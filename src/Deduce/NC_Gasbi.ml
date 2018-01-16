@@ -497,11 +497,11 @@ let inverter (p:pol) (polys:pol list)=
   mpoly_cmul (Int (-1)) inv;;
 
 (* Exemples *)
-let m1 = {coeff=Num.Int 1; vars=[1]; size=(2,2); length=1};;
-let m2 = {coeff=Num.Int 1; vars=[1;2]; size=(2,4); length=2};;
-let m3 = {coeff=Num.Int 1; vars=[1;1;2]; size=(2,4); length=3};;
-let m4 = {coeff=Num.Int 1; vars=[1;1]; size=(2,2); length=2};;
-let m5 = {coeff=Num.Int 1; vars=[2]; size=(2,4); length=1};;
+let m1 = {coeff=Num.Int 1; vars=[27]; size=(2,2); length=1};;
+let m2 = {coeff=Num.Int 1; vars=[27;78]; size=(2,4); length=2};;
+let m3 = {coeff=Num.Int 1; vars=[27;27;78]; size=(2,4); length=3};;
+let m4 = {coeff=Num.Int 1; vars=[27;27]; size=(2,2); length=2};;
+let m5 = {coeff=Num.Int 1; vars=[78]; size=(2,4); length=1};;
 
 let p1 = mpoly_add [m1] [m2];;
 mpoly_mul [m1] [m2;m1];;

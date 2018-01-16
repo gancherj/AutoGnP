@@ -40,6 +40,8 @@ module type MON = sig
     val neg_shape : shape
     val mult_shape : shape -> shape -> shape
     val shape_eq : shape -> shape -> bool
+    val shape_of_expr : Expr.expr -> shape
+    val id_of_shape : shape -> Expr.expr
     type mon = {
         coeff : Num.num;
         vars : vars;
@@ -48,6 +50,8 @@ module type MON = sig
     }
 
     type pol = mon list
+
+    val pp_pol : pol -> string
 end
 
 module MkMon (Data : MATDATA) : MON = struct
@@ -57,13 +61,23 @@ module MkMon (Data : MATDATA) : MON = struct
     let neg_shape = Data.neg_shape
     let mult_shape = Data.mult_shape
     let shape_eq = Data.shape_eq
+    let shape_of_expr = Data.shape_of_expr
+    let id_of_shape = Data.id_of_shape
     type mon = {
         coeff : Num.num;
         vars : vars;
         length : int;
         size : shape
     }
+
     type pol = mon list
+
+    let pp_pol (p : pol) : string =
+        "Poly length: " ^ (string_of_int (List.length p)) ^
+        (String.concat "\n" (
+            List.map (fun mon ->
+                "Mon of vars: " ^
+                (String.concat " " (List.map string_of_int mon.vars))) p))
 end
 
 module MkGasbi = functor (Mon : MON) -> struct
@@ -466,7 +480,7 @@ let deduce (p:pol) (polys:pol list)=
    | None ->
       (
         match acc with
-        |[] -> failwith "No inverter found"   (* if we already considered all the possible critical pairs, it is over *)
+        |[] -> raise Not_found   (* if we already considered all the possible critical pairs, it is over *)
         |[]::accs -> aux_get_inv p base accs
         |pol::accs ->
           let s_polys = new_Spolys pol base in
