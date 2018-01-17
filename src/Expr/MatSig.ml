@@ -21,6 +21,7 @@ let rec is_bijection_by (comp : 'a -> 'a -> bool) (xs : 'a list) (ys : 'a list) 
 module type MATDATA = sig
         type elt
         type shape
+        val pp_shape : shape -> string
         val mult_shape : shape -> shape -> shape
         val concat_shape : shape -> shape -> shape
         val sl_shape : shape -> shape

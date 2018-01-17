@@ -4,6 +4,7 @@ open Expr
 module type MATDATA = sig
         type elt
         type shape
+        val pp_shape : shape -> string
         val mult_shape : shape -> shape -> shape
         val concat_shape : shape -> shape -> shape
         val sl_shape : shape -> shape

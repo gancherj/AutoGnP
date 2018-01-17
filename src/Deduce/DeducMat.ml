@@ -11,6 +11,11 @@ module MatRules = MkMat (Mat)
 module MatMon = MkMon (Mat)
 module MatGasbi = MkGasbi (MatMon)
 
+open MatMon
+
+let mk_log level = mk_logger "Core.CoreRules" level "CoreRules.ml"
+let log_i = mk_log Bolt.Level.INFO
+
 let expr_to_id (e : expr) : int = e.e_tag
 let pol_of_base (elt : Mat.elt) : MatMon.pol = 
     let e = Mat.expr_of_elt elt in
@@ -50,7 +55,7 @@ let rec mis_decomp_split (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter
 let mis_add_trans (mis : (Mat.mat * inverter) list) =
     mis @ (List.map (fun (m,i) -> (Mat.MTrans m, i_op mk_MatTrans i)) mis)
 
-let mis_add_norm (mis : (Mat.mat * inverter) list) =
+let mis_norm (mis : (Mat.mat * inverter) list) =
     mis @ (List.map (fun (m,i) -> (MatRules.norm_mat m, i)) mis)
 
 let mi_of_ei (ei : expr * inverter) =
@@ -93,7 +98,7 @@ let rec norm_subgoals : split_subgoals -> split_subgoals = function
 
 (* --- actual deducibility --- *)
 
-let inverter_of_pol (p : MatMon.pol) (base : expr list) = 
+let inverter_of_pol (p : MatMon.pol)  (base : expr list) =
     let expr_of_mon (m : MatMon.mon) =
         let rec build_mult (is : int list) (s : MatMon.shape) : expr =
             match is with
@@ -107,7 +112,7 @@ let inverter_of_pol (p : MatMon.pol) (base : expr list) =
         | _ -> failwith "bad coeff"
    in
    match p with
-   | [] -> failwith "empty p"
+   | [] -> tacerror "empty p?"
    | _ ->
        I (mk_MatPlus (List.map (expr_of_mon) p))
 
@@ -117,19 +122,9 @@ let rec deduc_subgoals (sg : split_subgoals) (base : (MatMon.pol * inverter) lis
             (match (deduc_subgoals sg1 base, deduc_subgoals sg2 base) with
             | (I i1, I i2) -> I (mk_MatConcat i1 i2))
     | SSBase m ->
-            print_string ((pp_mat m) ^ "\n");
             let targ_pol = pol_of_mat m in
-            print_string (MatMon.pp_pol targ_pol);
-            print_string "\n";
             let targ_invpol = MatGasbi.inverter targ_pol (List.map fst base) in
-            print_string (MatMon.pp_pol targ_invpol);
-            print_string "\n";
-            inverter_of_pol targ_invpol (List.map expr_of_inverter (List.map snd base))
-
-let rec sg_num : split_subgoals -> int = function
-    | SSConcat (sg1, sg2) -> sg_num sg1 + sg_num sg2
-    | SSBase _ -> 1
-
+            inverter_of_pol targ_invpol (List.map expr_of_inverter (List.map snd base)) 
 
 let solve_mat eis e = 
     (* compute target pol, split into subgoals *)
@@ -139,9 +134,8 @@ let solve_mat eis e =
     
     (* compute input pols, fully split them *)
     let mis'' = List.map mi_of_ei eis in
-    let mis' = mis_add_trans (mis_decomp_split mis'') in
-    let mis = mis_add_norm mis' in
-    let pis = List.map pi_of_mi mis in
+    let mis = mis_add_trans (mis_decomp_split mis'') in
+    let pis = List.map pi_of_mi (mis_norm mis) in
     (* TODO throw in transpositions? *)
     
     deduc_subgoals targ_sgs pis

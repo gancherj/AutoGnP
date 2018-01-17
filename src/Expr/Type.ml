@@ -22,7 +22,7 @@ type mdim =
   | MDPlus of mdim * mdim
 
 let rec mdim_equal d1 d2 = match d1,d2 with
-| MDBase(a), MDBase(b) -> Lenvar.equal a b
+| MDBase(a), MDBase(b) ->  (Lenvar.name a) = (Lenvar.name b)
 | MDPlus(a,b), MDPlus(c,d) -> (mdim_equal a c) && (mdim_equal b d)
                               || ( (mdim_equal a d) && (mdim_equal b c))
 | _, _ -> false
@@ -30,6 +30,8 @@ let rec mdim_equal d1 d2 = match d1,d2 with
 let rec mdim_str d = match d with
 | MDBase (a) -> Lenvar.name a
 | MDPlus (a,b) -> (mdim_str a) ^ "+" ^ (mdim_str b)
+
+let pp_mdim = mdim_str
 
 let rec mdim_hash d = match d with
 | MDBase(a) -> Lenvar.hash a

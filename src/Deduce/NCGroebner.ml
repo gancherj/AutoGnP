@@ -52,6 +52,7 @@ module type MON = sig
     type pol = mon list
 
     val pp_pol : pol -> string
+    val pp_shape : shape -> string
 end
 
 module MkMon (Data : MATDATA) : MON = struct
@@ -70,14 +71,26 @@ module MkMon (Data : MATDATA) : MON = struct
         size : shape
     }
 
+    let pp_shape = Data.pp_shape
+
     type pol = mon list
 
     let pp_pol (p : pol) : string =
-        "Poly length: " ^ (string_of_int (List.length p)) ^
+        "[" ^
+        (String.concat ";" (List.map (fun mon ->
+            "{coeff=Num.Int 1; vars = [" ^ (String.concat ";" (List.map
+            string_of_int mon.vars)) ^ "]; size="^(Data.pp_shape mon.size)^"; length="^(string_of_int
+            (List.length mon.vars))^"}") p ))
+        ^ "]"
+
+  (*      "Poly length: " ^ (string_of_int (List.length p)) ^ ": " ^
         (String.concat "\n" (
             List.map (fun mon ->
                 "Mon of vars: " ^
-                (String.concat " " (List.map string_of_int mon.vars))) p))
+                (String.concat " " (List.map string_of_int mon.vars))
+                ^ " coeff = " ^ (Num.string_of_num mon.coeff)
+                ^ " length = " ^ (string_of_int mon.length)
+                ^ " size = " ^ (Data.pp_shape mon.size)) p )) *)
 end
 
 module MkGasbi = functor (Mon : MON) -> struct
@@ -144,7 +157,8 @@ let mmul (m1:mon) (m2:mon) :mon  =
  else if shape_eq (m1.size) (neg_shape) then
    null_mon 
  else
-   failwith "Monoms sizes uncompatible";;
+   Util.tacerror "Monoms sizes uncompatible: %s and %s" (pp_shape m1.size) (pp_shape
+   m2.size)
 
 exception NotPrefix;;
 
@@ -171,7 +185,7 @@ let morder_lt m1 m2 =
 (* ------------------------------------------------------------------------- *)
 
 let mpoly_cmul c (pol:pol) :pol =
-  if c = Int 0 then []
+  if c = Int 0 then failwith "got here"
   else map (fun m -> {m with coeff=c*/m.coeff}) pol;;
 
 let mpoly_mmul cm (pol:pol) :pol = map (mmul cm) pol;;
@@ -502,13 +516,17 @@ let deduce (p:pol) (polys:pol list)=
       );;
 
 
-let inverter (p:pol) (polys:pol list)=
+let inverter (p:pol) (oldpolys:pol list)=
   let acc = ref 0 in
   let polys = List.map (fun pol ->
                   acc := !acc - 1;
-                pol@[{coeff=Num.Int 1; vars=[!acc]; size=neg_shape;length=0}]) polys
+                pol@[{coeff=Num.Int 1; vars=[!acc]; size=neg_shape;length=0}])
+  oldpolys
   in
   let inv = aux_get_inv p (DBase.from_list polys) polys in
-  mpoly_cmul (Int (-1)) inv;;
+  match (mpoly_cmul (Int (-1)) inv) with
+    | [] -> Util.tacerror "produced [] from \n %s \n %s" (pp_pol p) ("["^
+    String.concat ";\n" (List.map pp_pol oldpolys) ^ "]")
+    | j -> j;;
 
 end

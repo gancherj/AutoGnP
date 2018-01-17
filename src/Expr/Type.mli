@@ -25,6 +25,7 @@ type mdim =
   | MDPlus of mdim * mdim
 
 val mdim_equal : mdim -> mdim -> bool
+val pp_mdim : mdim -> string
 
 type ty = private { ty_node : ty_node; ty_tag : int; }
 and ty_node =
