@@ -72,13 +72,6 @@ let mis_norm (mis : (Mat.mat * inverter) list) =
     mis @ (List.map (fun (m,i) -> (Mat.mat_of_expr (Norm.norm_expr_strong
     (Mat.expr_of_mat m)), i)) mis)
 
-let rec mis_split_trans (k : int) (mis : (Mat.mat * inverter) list) : (Mat.mat *
-inverter) list =
-    match k with
-    | 0 -> mis
-    | _ -> mis_norm (mis_split_trans (k-1) (mis_decomp_split (mis_add_trans
-    mis)))
-
 let mi_of_ei (ei : expr * inverter) =
     ((MatRules.norm_mat (Mat.mat_of_expr (fst ei))), snd ei)
 
@@ -102,19 +95,26 @@ let rec pol_of_mat : Mat.mat -> MatMon.pol = function
 let pi_of_mi (mi : Mat.mat * inverter) =
     (pol_of_mat (fst mi), snd mi)
 
-type split_subgoals = SSBase of Mat.mat | SSConcat of (split_subgoals * split_subgoals)
+type split_subgoals = SSBase of Mat.mat | SSConcatR of (split_subgoals *
+split_subgoals) | SSConcatL of (split_subgoals * split_subgoals)
 
 let rec subgoals_of_targ (m : Mat.mat) =
-    if Mat.shape_splittable (Mat.shape_of_expr (Mat.expr_of_mat m)) then
+    let s = Mat.shape_of_expr (Mat.expr_of_mat m) in
+    if Mat.shape_splittable s then
         let m_sl = Mat.MSplitLeft m in
         let m_sr = Mat.MSplitRight m in
-        SSConcat (subgoals_of_targ m_sl, subgoals_of_targ m_sr)
+        SSConcatR (subgoals_of_targ m_sl, subgoals_of_targ m_sr)
+    else if Mat.shape_leftsplittable s then
+        let m_lsl = Mat.MTrans (Mat.MSplitLeft (Mat.MTrans m)) in
+        let m_lsr = Mat.MTrans (Mat.MSplitRight (Mat.MTrans m)) in
+        SSConcatL (subgoals_of_targ m_lsl, subgoals_of_targ m_lsr)
     else
         SSBase m
 
 let rec norm_subgoals : split_subgoals -> split_subgoals = function
-    | SSBase m -> SSBase (MatRules.norm_mat m)
-    | SSConcat (s1, s2) -> SSConcat (norm_subgoals s1, norm_subgoals s2)
+    | SSBase m -> SSBase (Mat.mat_of_expr (Norm.norm_expr_strong (Mat.expr_of_mat m)))
+    | SSConcatL (s1, s2) -> SSConcatL (norm_subgoals s1, norm_subgoals s2)
+    | SSConcatR (s1, s2) -> SSConcatR (norm_subgoals s1, norm_subgoals s2)
 
 
 (* --- actual deducibility --- *)
@@ -139,9 +139,13 @@ let inverter_of_pol (p : MatMon.pol)  (base : expr list) =
 
 let rec deduc_subgoals (sg : split_subgoals) (base : (MatMon.pol * inverter) list) =
     match sg with
-    | SSConcat (sg1,sg2) ->
+    | SSConcatR (sg1,sg2) ->
             (match (deduc_subgoals sg1 base, deduc_subgoals sg2 base) with
             | (I i1, I i2) -> I (mk_MatConcat i1 i2))
+    | SSConcatL (sg1,sg2) ->
+            (match (deduc_subgoals sg1 base, deduc_subgoals sg2 base) with
+            | (I i1, I i2) -> I (mk_MatTrans (mk_MatConcat (mk_MatTrans i1)
+            (mk_MatTrans i2))))
     | SSBase m ->
             let targ_pol = pol_of_mat m in
             let targ_invpol = MatGasbi.inverter targ_pol (List.map fst base) in
@@ -151,9 +155,8 @@ let solve_mat eis e =
     (* compute target pol, split into subgoals *)
     let targ_m' = (Mat.mat_of_expr e) in
     let targ_sgs = norm_subgoals (subgoals_of_targ targ_m') in
-    (* TODO deal with transpositions? *)
     
-    (* compute input pols, fully split them *)
+    (* compute input pols *)
     let mis = List.map mi_of_ei eis in
     (* fully split *)
     let mis = mis_decomp_split mis in
