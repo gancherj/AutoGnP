@@ -523,10 +523,11 @@ let inverter (p:pol) (oldpolys:pol list)=
                 pol@[{coeff=Num.Int 1; vars=[!acc]; size=neg_shape;length=0}])
   oldpolys
   in
+  try
   let inv = aux_get_inv p (DBase.from_list polys) polys in
-  match (mpoly_cmul (Int (-1)) inv) with
-    | [] -> Util.tacerror "produced [] from \n %s \n %s" (pp_pol p) ("["^
-    String.concat ";\n" (List.map pp_pol oldpolys) ^ "]")
-    | j -> j;;
+  mpoly_cmul (Int (-1)) inv
+  with
+  Not_found ->
+      raise Not_found
 
 end

@@ -25,6 +25,7 @@ module type MATDATA = sig
         val mult_shape_compat : shape -> shape -> bool
         val neg_shape : shape
         val shape_splittable : shape -> bool
+        val shape_leftsplittable : shape -> bool
 
 
         type mat =

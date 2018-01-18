@@ -21,11 +21,6 @@ let pol_of_base (elt : Mat.elt) : MatMon.pol =
     let e = Mat.expr_of_elt elt in
     [MatGasbi.mk_vmon (expr_to_id e) (MatMon.shape_of_expr e)]
 
-
-
-
-
-
 let i_op (f : expr -> expr) (i : inverter) =
     match i with
     | I e -> I (f e)
@@ -35,6 +30,9 @@ let sl_mi (mi : (Mat.mat * inverter)) : Mat.mat * inverter =
     
 let sr_mi (mi : (Mat.mat * inverter)) : Mat.mat * inverter =
     (Mat.MSplitRight (fst mi), (i_op mk_MatSplitRight (snd mi)))
+
+let tr_mi (mi : (Mat.mat * inverter)) : Mat.mat * inverter =
+    (Mat.MTrans (fst mi), i_op mk_MatTrans (snd mi))
 
 
 let contains_splittable (mis : (Mat.mat * inverter) list) : bool =
@@ -52,11 +50,34 @@ let rec mis_decomp_split (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter
         mis_decomp_split (List.concat (List.map mi_decomp_split_aux mis))
     else mis 
 
+let contains_leftsplittable (mis : (Mat.mat * inverter) list) : bool =
+    List.exists (fun (m,_) -> Mat.shape_leftsplittable (Mat.shape_of_expr (Mat.expr_of_mat m))) mis
+
+let mi_decomp_leftsplit_aux (mi : (Mat.mat * inverter)) : (Mat.mat * inverter) list =
+    let mshape = Mat.shape_of_expr (Mat.expr_of_mat (fst mi)) in
+    if Mat.shape_leftsplittable mshape then
+        [tr_mi (sl_mi (tr_mi mi)); tr_mi (sr_mi (tr_mi mi))]
+    else
+        [mi]
+
+let rec mis_decomp_leftsplit (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter) list =
+    if contains_leftsplittable mis then
+        mis_decomp_leftsplit (List.concat (List.map mi_decomp_leftsplit_aux mis))
+    else mis 
+
 let mis_add_trans (mis : (Mat.mat * inverter) list) =
-    mis @ (List.map (fun (m,i) -> (Mat.MTrans m, i_op mk_MatTrans i)) mis)
+    mis @ (List.map tr_mi mis)
 
 let mis_norm (mis : (Mat.mat * inverter) list) =
-    mis @ (List.map (fun (m,i) -> (MatRules.norm_mat m, i)) mis)
+    mis @ (List.map (fun (m,i) -> (Mat.mat_of_expr (Norm.norm_expr_strong
+    (Mat.expr_of_mat m)), i)) mis)
+
+let rec mis_split_trans (k : int) (mis : (Mat.mat * inverter) list) : (Mat.mat *
+inverter) list =
+    match k with
+    | 0 -> mis
+    | _ -> mis_norm (mis_split_trans (k-1) (mis_decomp_split (mis_add_trans
+    mis)))
 
 let mi_of_ei (ei : expr * inverter) =
     ((MatRules.norm_mat (Mat.mat_of_expr (fst ei))), snd ei)
@@ -128,15 +149,21 @@ let rec deduc_subgoals (sg : split_subgoals) (base : (MatMon.pol * inverter) lis
 
 let solve_mat eis e = 
     (* compute target pol, split into subgoals *)
-    let targ_m' = (Mat.mat_of_expr (Norm.norm_expr_strong e)) in
+    let targ_m' = (Mat.mat_of_expr e) in
     let targ_sgs = norm_subgoals (subgoals_of_targ targ_m') in
     (* TODO deal with transpositions? *)
     
     (* compute input pols, fully split them *)
-    let mis'' = List.map mi_of_ei eis in
-    let mis = mis_add_trans (mis_decomp_split mis'') in
+    let mis = List.map mi_of_ei eis in
+    (* fully split *)
+    let mis = mis_decomp_split mis in
+    (* fully left split *)
+    let mis = mis_decomp_leftsplit mis in
+    (* take transpose *)
+    let mis = mis_add_trans mis in
+    (* throw in normal forms *)
+    let mis = mis_norm mis in
     let pis = List.map pi_of_mi (mis_norm mis) in
-    (* TODO throw in transpositions? *)
     
     deduc_subgoals targ_sgs pis
 
