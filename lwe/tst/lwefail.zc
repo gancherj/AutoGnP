@@ -1,0 +1,38 @@
+operator Chi0 : BS_chir -> Matrix_{m,1}.
+operator Chi1 : BS_chir -> Matrix_{1,1}.
+
+adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
+assumption LWE
+[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chir; chir1 <-$ BS_chir; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
+[ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
+
+adversary Adv : (Matrix_{1,m+m} * Matrix_{1, 1}) -> Bool.
+operator Minj : Bool -> Matrix_{1,1}.
+operator Rinj : BS_rinjr -> Matrix_{m,m}.
+bound_adv [
+  Au <-$ Matrix_{n,m+1};
+  s <-$ Matrix_{n, 1};
+  chir0 <-$ BS_chir;
+  chir1 <-$ BS_chir;
+  rinjr <-$ BS_rinjr;
+  b <-$ Bool;
+  b' <- Adv ((tr (Chi0(chir0)) + (tr (s) * sl (Au)))
+              || ((tr (Chi0(chir0)) * Rinj(rinjr))
+                  + (tr (s) * sl (Au) * Rinj(rinjr))),
+              Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (Au)));
+  
+  
+  ] : b=b'.
+  (*assumption_decisional! LWE -> .*)
+     move chir0 3.
+   move chir1 4.
+   abstract 5 tt (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
+   abstract 9 ans b=b'.
+   //=.
+   subst ((tr (Chi0(chir0)) + (tr (s) * sl (tt#0))) -> sl tr tt#1).
+   subst ((tr (Chi0(chir0)) * Rinj(rinjr))
+                  + (tr (s) * sl (tt#0) * Rinj(rinjr)) -> (sl tr tt#1) * Rinj(rinjr)).
+   subst (Minj(b) + tr (Chi1(chir1)) + (
+tr (s) * sr (tt#0)) -> Minj(b) + sr tr tt#1).
+   (* Here, the automatic invocation of LWE assumption hangs. This would be fixed by a better deducibility algorithm *)
+   assumption_decisional LWE -> [tt ans] r__.
