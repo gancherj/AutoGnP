@@ -532,4 +532,38 @@ inverter [m1] lb;;
 inverter [m2] lb;;
 inverter [m3] lb;;
 inverter [m4] lb;;
-inverter [m5] lb;;
+(*inverter [m5] lb;;*)
+
+let oldp = 
+    [{coeff=Num.Int 1; vars = [77;47;48]; size=(1,1); length=3}];;
+
+let mybase = 
+    let m = 23 in
+    let n = 17 in
+[[{coeff=Num.Int 1; vars = [30]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [33]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [36]; size=(n,m); length=1}];
+[{coeff=Num.Int 1; vars = [40]; size=(m+1,1); length=1}];
+[{coeff=Num.Int 1; vars = [66]; size=(1,m); length=1}];
+[{coeff=Num.Int 1; vars = [68]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [47]; size=(m,n); length=1}];
+[{coeff=Num.Int 1; vars = [48]; size=(n,1); length=1}];
+[{coeff=Num.Int 1; vars = [36;35]; size=(n,1); length=2}];
+[{coeff=Num.Int 1; vars = [68]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [69]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [77;47]; size=(1,n); length=2}];
+[{coeff=Num.Int 1; vars = [92]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [93]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [47]; size=(m,n); length=1}];
+[{coeff=Num.Int 1; vars = [41]; size=(1,m+1); length=1}];
+[{coeff=Num.Int 1; vars = [67]; size=(m,1); length=1}];
+[{coeff=Num.Int 1; vars = [69]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [36]; size=(n,m); length=1}];
+[{coeff=Num.Int 1; vars = [94]; size=(1,n); length=1}];
+[{coeff=Num.Int 1; vars = [77;47]; size=(1,n); length=2}];
+[{coeff=Num.Int 1; vars = [69]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [68]; size=(1,1); length=1}];
+[{coeff=Num.Int 1; vars = [36;35]; size=(n,1); length=2}]];;
+
+inverter oldp mybase;;
+

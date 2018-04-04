@@ -75,6 +75,40 @@ module Mat : MATDATA = struct
         match a with
         | MDPlus _ -> true
         | MDBase _ -> false
+
+    let all_constants_of_shape s =
+        let shape_id t = if Type.mdim_equal (fst t) (snd t) then [mk_MatId (fst t) (snd t)] else [] in
+        let shape_zero t = [mk_MatZero (fst t) (snd t)] in
+
+        let rec go s t =
+            (shape_id (s,t)) @ (shape_zero (s,t)) @ (
+                match s with
+                | MDPlus (s1, s2) ->
+                        (match t with
+                         | MDPlus (t1, t2) ->
+                                 (go s1 (MDPlus (t1, t2))) @
+                                 (go s1 t1) @
+                                 (go s1 t2) @
+                                 (go s2 (MDPlus (t1, t2))) @
+                                 (go s2 t1) @
+                                 (go s2 t2) @
+                                 (go (MDPlus (s1, s2)) t1) @
+                                 (go (MDPlus (s1, s2)) t2)
+                         | MDBase _ ->
+                                 (go s1 t) @
+                                 (go s2 t))
+                | MDBase _ ->
+                        (match t with
+                         | MDPlus (t1, t2) ->
+                                 (go s t1) @
+                                 (go s t2)
+                         | MDBase _ ->
+                                 []))
+       in
+
+       go (fst s) (snd s)
+
+
   end
 
 let rec pp_mat : Mat.mat -> string = function
@@ -211,5 +245,7 @@ module ListMat : MATDATA = struct
     let elt_of_expr e = LBase e
 
     let id_of_shape (a,b,c) = mk_ListOf a (mk_MatId b c)
+
+    let all_constants_of_shape s = failwith "unimp"
 end
 

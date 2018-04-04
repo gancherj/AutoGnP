@@ -140,12 +140,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
         add_sub_constr e; List.iter (register_subexprs false) es
       | GInv -> failwith "GInv cannot occur in normal-form"
       | MatMult|MatOpp|MatTrans|MatConcat|MatSplitLeft|MatSplitRight ->
-              add_sub e; List.iter (register_subexprs true) es 
-      
+          if not in_field then add_sub_solver e; List.iter (register_subexprs true) es 
       | ListOp _ -> 
-              add_sub e; List.iter (register_subexprs true) es 
+              add_sub e; List.iter (register_subexprs in_field) es 
       | ListOf ->
-              add_sub e; List.iter (register_subexprs true) es 
+              add_sub e; List.iter (register_subexprs in_field) es 
 
       (*
       | FDiv ->
@@ -161,9 +160,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Xor ->
         add_sub_solver e; List.iter (register_subexprs false) es
       | MatPlus ->
-        add_sub e; List.iter (register_subexprs true) es
+        if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | ListNop _ ->
-        add_sub e; List.iter (register_subexprs true) es
+        add_sub_solver e; List.iter (register_subexprs false) es
       end
       (* normal form is g^log(v) and must have been already added *)
     | V _ when is_G e.e_ty -> ()
@@ -249,7 +248,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Lor   -> constructn e es mk_Lor
       | GMult -> constructn e es mk_GMult
       | FPlus | FMult | Xor -> ()
-      | MatPlus -> constructn e es mk_MatPlus (* () *)
+      | MatPlus -> () (*constructn e es mk_MatPlus (* () *) *)
       | ListNop n -> constructn e es (mk_ListNop n)
       end
     | V _

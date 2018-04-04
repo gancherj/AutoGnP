@@ -130,7 +130,8 @@ let inverter_of_pol (p : MatMon.pol)  (base : expr list) =
         in
         match m.MatMon.coeff with
         | Int 1 -> (build_mult (m.MatMon.vars) (m.MatMon.size))
-        | _ -> failwith "bad coeff"
+        | Int (-1) -> mk_MatOpp (build_mult (m.MatMon.vars) (m.MatMon.size))
+        | _ -> tacerror "unknown coeff type"
    in
    match p with
    | [] -> tacerror "empty p?"
@@ -151,6 +152,11 @@ let rec deduc_subgoals (sg : split_subgoals) (base : (MatMon.pol * inverter) lis
             let targ_invpol = MatGasbi.inverter targ_pol (List.map fst base) in
             inverter_of_pol targ_invpol (List.map expr_of_inverter (List.map snd base)) 
 
+let rec constant_pis (s : Mat.shape) : (MatMon.pol * inverter) list =
+    List.map (fun ce -> let p = pol_of_base (Mat.elt_of_expr ce) in (p, I ce))
+    (Mat.all_constants_of_shape s)
+
+
 let solve_mat eis e = 
     (* compute target pol, split into subgoals *)
     let targ_m' = (Mat.mat_of_expr e) in
@@ -166,9 +172,19 @@ let solve_mat eis e =
     let mis = mis_add_trans mis in
     (* throw in normal forms *)
     let mis = mis_norm mis in
-    let pis = List.map pi_of_mi (mis_norm mis) in
-    
-    deduc_subgoals targ_sgs pis
 
+    let pis = List.map pi_of_mi (mis_norm mis) in
+
+    (* throw in constants *)
+    let pis = pis @ constant_pis (Mat.shape_of_expr e) in
+    
+    try
+        deduc_subgoals targ_sgs pis
+    with
+        Not_found ->
+          log_i (lazy (fsprintf "Mat: could not deduce %a from %a" pp_expr e (pp_list
+          "," pp_expr) (List.map fst eis)));
+          raise Not_found
+         
 
 

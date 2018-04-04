@@ -47,6 +47,8 @@ module type MATDATA = sig
         val extra_rewr : mat -> mat
         val id_of_shape : shape -> expr
 
+        val all_constants_of_shape : shape -> expr list
+
     end
 
 module type MATRULES = functor (Data : MATDATA) -> sig
