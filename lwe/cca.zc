@@ -1,0 +1,149 @@
+
+
+operator Rinj : BS_randr -> Matrix_{m,m}. (* good *)
+
+operator M : Matrix_{1,n} -> Matrix_{n,n}. (* good *)
+operator Gadg : () -> Matrix_{n,m}.
+
+oracle dec_orcl : (Matrix_{1,n} * Matrix_{1,m+m}) -> Bool.
+operator Invert : (Matrix_{n,m+m} * Matrix_{m,m} * Matrix_{1, m+m}) -> (Matrix_{1,n} * Matrix_{1,m + m}).
+operator Decode : Matrix_{m, 1} -> Bool.
+operator Encode : BS_m -> Matrix_{m,1}.
+operator Gauss : BS_g -> Matrix_{1, m+m}.
+adversary Adv0 : (Matrix_{n,m} * Matrix_{n,m}) -> (BS_m * BS_m).
+adversary Adv1 : (Matrix_{1,n} * Matrix_{1,m+m}) -> Bool.
+
+adversary lhl_adv : (Matrix_{n,m} * Matrix_{n,m}) -> Bool.
+oracle lhl_orcl : (Matrix_{1,n} * Matrix_{1,m+m}) -> Bool.
+
+assumption LHL
+[
+  A <-$ Matrix_{n,m};
+  r <-$ BS_randr;
+  b <- lhl_adv(A, A * (Rinj(r)))
+  with lhl_orcl (ct) = {
+    let Au = A || ((- A * Rinj(r)) + M(ct#0) * (Gadg (())));
+    (* Embedding the guard in the assumption also takes care of the reasoning about invert. *)
+    guard (sr Au <> (- A * Rinj(r)));
+    let se = Invert (Au, Rinj(r), ct#1);
+    let v = ct#1 - se#1;
+    return Decode ((Rinj(r) || I_{m,m}) * tr v);
+    };
+
+]
+[
+  A <-$ Matrix_{n,m};
+  U <-$ Matrix_{n,m};
+  r <-$ BS_randr;
+  b <- lhl_adv (A, U)
+  with lhl_orcl (ct) = {
+    let Au = A || ((- U) + M(ct#0) * (Gadg (())));
+    guard (sr Au <> (- U));
+    let se = Invert (Au, Rinj(r), ct#1);
+    let v = ct#1 - se#1;
+    return Decode ((Rinj(r) || I_{m,m}) * tr v);
+    };
+
+].
+  
+adversary lwe_adv : (Matrix_{n,m+m} * Matrix_{1,m+m}) -> Bool.
+assumption LWE
+[
+  AU <-$ Matrix_{n,m+m};
+  s <-$ Matrix_{1,n};
+  e <-$ BS_g;
+  b <- lwe_adv (AU, s * AU + Gauss(e));
+] [
+    AU <-$ Matrix_{n, m+m};
+    u <-$ Matrix_{1,m+m};
+    b <- lwe_adv (AU, u);
+  ].
+  
+
+bound_adv [
+  A <-$ Matrix_{n,m};
+  r <-$ BS_randr;
+  let R = Rinj(r);
+  let A1 = - (A * R);
+
+  p <- Adv0 (A, A1) with
+  dec_orcl (ct) = {
+    let Au = A || (A1 + M(ct#0) * (Gadg (())));
+    guard (sr Au <> (- A * Rinj(r)));
+    let se = Invert (Au, R, ct#1);
+    let v = ct#1 - se#1;
+    return Decode ((R || I_{m,m}) * tr v);
+    };
+
+  b <-$ Bool;
+  let m = b ? p#0 : p#1;
+    s <-$ Matrix_{1,n};
+    re <-$ BS_g;
+  let e = Gauss(re);
+    u <-$ Matrix_{1,n};
+  let mu = Encode(m);
+  b' <- Adv1 (u, s * (A || (A1 + M(u) * Gadg (()))) + e + (0_{1,m} || (tr mu))); 
+    ] : b = b'.
+
+    unfold R A1.
+    abstract 3 AR (A * Rinj(r)).
+    abstract 4 tt (A, AR); unfold AR.
+    abstract 13 ans (b = b').
+
+    hybrid (4,1) {
+      let inp = ct;
+      let Au = A || ((((-A) * Rinj(r))) + (M(inp#0) * Gadg(())));     
+    guard (sr Au <> (- A * Rinj(r)));
+      let se = Invert(Au,Rinj(r),inp#1);
+      let v = inp#1 + -(se#1);
+      let out = Decode((Rinj(r) || I_{m,m}) * tr v);
+      return out;
+      }.
+      norm.
+      dist_eq.
+
+      assumption_decisional * LHL ->
+        [A,A; r,r;
+         b,ans;
+        lhl_orcl`ct, dec_orcl`inp;
+        lhl_orcl`Au, dec_orcl`Au;
+        lhl_orcl`se, dec_orcl`se;
+        lhl_orcl`v, dec_orcl`v] 3 13 [4 [(1 1 6 lhl_orcl)]]. 
+        unfold tt ans.
+        //=.
+
+    move u 2.
+    rnd U (U -> U + M(u) * Gadg(())) (U -> U - M(u) * Gadg(())).
+    norm.
+    rnd U (U -> -U) (U -> -U).
+    norm.
+    
+    trans* [
+      subst 9 (((s * A)) || (tr (Encode(b?p#0:p#1)) + ((s * U))) ->
+        s * (A || U) + (0_{1,m} || (tr (Encode(b?p#0:p#1)))))].
+    LR:norm.
+    dist_eq.
+
+    move 3 2.
+    move 8 3.
+    mat_fold 1 2 AU.
+    move 7 2.
+    //=.
+    
+    
+    abstract 4 tt (AU, s * AU + Gauss(re)).
+    trans* [
+      subst 9 (Gauss(re) + (0_{1,m} || tr (Encode(b?p#0:p#1))) + (s * tt#0) ->
+               tt#1 + (0_{1,m} || tr (Encode(b?p#0:p#1))))].
+        LR: norm.
+    dist_eq.
+    abstract 10 ans (b = b').
+    
+    assumption_decisional LWE -> [tt ans] z.
+    norm.
+    move z 6.
+
+    rnd z (z -> z - (0_{1,m} || tr (Encode(b?p#0:p#1)))) (z -> z + (0_{1,m} || tr (Encode(b?p#0:p#1)))).
+    norm.
+    indep!.
+qed.
