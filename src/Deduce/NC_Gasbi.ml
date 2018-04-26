@@ -487,16 +487,31 @@ let deduce (p:pol) (polys:pol list)=
       );;
 
 
+let sort_poly : pol -> pol = fun p ->
+        sort (fun m1 m2 -> 
+        match (morder_lt m1 m2, morder_lt m2 m1) with
+        | (false, true) -> -1
+        | (true, false) -> 1
+        | (false, false) -> 0
+        | (true, true) -> failwith "unreach"
+        ) p
+
+
+let sort_polys : pol list -> pol list =
+    map sort_poly
+
 let inverter (p:pol) (polys:pol list)=
   let acc = ref 0 in
   let polys = List.map (fun pol ->
                   acc := !acc - 1;
-                pol@[{coeff=Num.Int 1; vars=[!acc]; size=(-1,-1);length=0}]) polys
+                pol@[{coeff=Num.Int 1; vars=[!acc]; size=(-1,-1);length=0}])
+  (sort_polys polys)
   in
-  let inv = aux_get_inv p (DBase.from_list polys) polys in
+  let inv = aux_get_inv (sort_poly p) (DBase.from_list polys) polys in
   mpoly_cmul (Int (-1)) inv;;
 
 (* Exemples *)
+(*
 let m1 = {coeff=Num.Int 1; vars=[27]; size=(2,2); length=1};;
 let m2 = {coeff=Num.Int 1; vars=[27;78]; size=(2,4); length=2};;
 let m3 = {coeff=Num.Int 1; vars=[27;27;78]; size=(2,4); length=3};;
@@ -534,10 +549,27 @@ inverter [m3] lb;;
 inverter [m4] lb;;
 (*inverter [m5] lb;;*)
 
+*)
+
+
+let (x:mon) = {coeff=Num.Int 1; vars = [1]; size=(2,3); length=1};;
+let (yz : mon) = {coeff=Num.Int 1; vars = [2;3]; size=(2,3); length=2};;
+let (a : mon) = {coeff=Num.Int 1; vars = [4]; size=(3,4); length=1};;
+ 
+let xa = {coeff=Num.Int 1; vars=[1;4]; size=(2,4); length=2};;
+let yza = {coeff = Num.Int 1; vars=[2;3;4]; size=(2,4); length = 3};;
+ 
+inverter ([xa; yza]) [[x; yz]; [a]];;
+
+
+(*
 let oldp = 
     [{coeff=Num.Int 1; vars = [77;47;48]; size=(1,1); length=3}];;
 
 let mybase = 
+    [[{coeff=Num.Int 1; vars = [1]; size=(2,3); length=1}];
+
+
     let m = 23 in
     let n = 17 in
 [[{coeff=Num.Int 1; vars = [30]; size=(1,1); length=1}];
@@ -566,4 +598,4 @@ let mybase =
 [{coeff=Num.Int 1; vars = [36;35]; size=(n,1); length=2}]];;
 
 inverter oldp mybase;;
-
+*)

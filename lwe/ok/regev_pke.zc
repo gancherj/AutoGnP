@@ -49,4 +49,5 @@ rnd wb (B -> tr B) (B -> tr B); //.
 move 3 4.
 rnd wb (B -> B - (b?Mu(()):0_{1,1})) (B -> B + (b?Mu(()):0_{1,1})); //.
   indep!.
+
 qed.

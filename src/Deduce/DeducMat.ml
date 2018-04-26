@@ -6,6 +6,7 @@ open NCGroebner
 open MatSig
 open MatData
 open Num
+open Abbrevs
 
 module MatRules = MkMat (Mat)
 module MatMon = MkMon (Mat)
@@ -68,12 +69,14 @@ let rec mis_decomp_leftsplit (mis : (Mat.mat * inverter) list) : (Mat.mat * inve
 let mis_add_trans (mis : (Mat.mat * inverter) list) =
     mis @ (List.map tr_mi mis)
 
-let mis_norm (mis : (Mat.mat * inverter) list) =
-    mis @ (List.map (fun (m,i) -> (Mat.mat_of_expr (Norm.norm_expr_strong
-    (Mat.expr_of_mat m)), i)) mis)
-
 let mi_of_ei (ei : expr * inverter) =
     ((MatRules.norm_mat (Mat.mat_of_expr (fst ei))), snd ei)
+
+let norm_mis (mis : (Mat.mat * inverter) list) =
+    List.map (fun mi -> ((MatRules.norm_mat (fst mi), snd mi))) mis
+
+let ei_of_mi (mi : Mat.mat * inverter) =
+    ((Mat.expr_of_mat (fst mi), snd mi))
 
 (* pol_of_mat : translate splitleft, splitright, trans as atomic *)
 let rec pol_of_mat : Mat.mat -> MatMon.pol = function
@@ -117,7 +120,17 @@ let rec norm_subgoals : split_subgoals -> split_subgoals = function
     | SSConcatR (s1, s2) -> SSConcatR (norm_subgoals s1, norm_subgoals s2)
 
 
+let rec pp_subgoals (fmt : F.formatter) (sg : split_subgoals) =
+    match sg with
+    | SSBase m -> F.fprintf fmt "%a" pp_expr (Mat.expr_of_mat m)
+    | SSConcatL (s1, s2) -> pp_subgoals fmt s1; F.fprintf fmt ", "; pp_subgoals fmt s2
+    | SSConcatR (s1, s2) -> pp_subgoals fmt s1; F.fprintf fmt ", "; pp_subgoals fmt s2
+    
+
+
 (* --- actual deducibility --- *)
+
+
 
 let inverter_of_pol (p : MatMon.pol)  (base : expr list) =
     let expr_of_mon (m : MatMon.mon) =
@@ -164,16 +177,19 @@ let solve_mat eis e =
     
     (* compute input pols *)
     let mis = List.map mi_of_ei eis in
+    (* take transpose *)
+    let mis = mis_add_trans mis in
     (* fully split *)
     let mis = mis_decomp_split mis in
     (* fully left split *)
     let mis = mis_decomp_leftsplit mis in
     (* take transpose *)
     let mis = mis_add_trans mis in
-    (* throw in normal forms *)
-    let mis = mis_norm mis in
+    (* norm *)
+    let mis = norm_mis mis in
 
-    let pis = List.map pi_of_mi (mis_norm mis) in
+
+    let pis = List.map pi_of_mi mis in
 
     (* throw in constants *)
     let pis = pis @ constant_pis (Mat.shape_of_expr e) in
@@ -182,8 +198,9 @@ let solve_mat eis e =
         deduc_subgoals targ_sgs pis
     with
         Not_found ->
-          log_i (lazy (fsprintf "Mat: could not deduce %a from %a" pp_expr e (pp_list
-          "," pp_expr) (List.map fst eis)));
+          log_i (lazy (fsprintf "Mat: from %a could not deduce subgoals %a"
+          (pp_list "," pp_expr) (List.map fst (List.map ei_of_mi mis))
+          pp_subgoals targ_sgs));
           raise Not_found
          
 

@@ -196,18 +196,7 @@ bound_adv [
  move Au 1.
  move s 2.
    norm. //=.
- (* need to factor (a || ab) as a * (1 || b) *)
-   move chir0 3.
-   move chir1 4.
-   abstract 5 tt (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
-   abstract 12 ans b=b'.
-   //=.
-   subst ((tr (Chi0(chir0)) + (tr (s) * sl (tt#0))) -> sl tr tt#1).
-   subst ((tr (Chi0(chir0)) * Rinj(rinjr))
-                  + (tr (s) * sl (tt#0) * Rinj(rinjr)) -> (sl tr tt#1) * Rinj(rinjr)).
-   subst (Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (tt#0)) -> Minj(b) + sr tr tt#1).
-   (* Here, the automatic invocation of LWE assumption hangs. This would be fixed by a better deducibility algorithm *)
-   assumption_decisional LWE -> [tt ans] r__.
+  assumption_decisional! LWE -> r__.
  rnd r__ (x -> tr x) (x -> tr x); //.
  mat_unfold 2; //.
  move B 8.

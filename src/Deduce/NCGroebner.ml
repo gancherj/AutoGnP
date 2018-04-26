@@ -516,15 +516,28 @@ let deduce (p:pol) (polys:pol list)=
       );;
 
 
+let sort_poly : pol -> pol = fun p ->
+        sort (fun m1 m2 -> 
+        match (morder_lt m1 m2, morder_lt m2 m1) with
+        | (false, true) -> -1
+        | (true, false) -> 1
+        | (false, false) -> 0
+        | (true, true) -> failwith "unreachable"
+        ) p
+
+
+let sort_polys : pol list -> pol list =
+    map sort_poly
+
 let inverter (p:pol) (oldpolys:pol list)=
   let acc = ref 0 in
   let polys = List.map (fun pol ->
                   acc := !acc - 1;
                 pol@[{coeff=Num.Int 1; vars=[!acc]; size=neg_shape;length=0}])
-  oldpolys
+              (sort_polys oldpolys)
   in
   try
-  let inv = aux_get_inv p (DBase.from_list polys) polys in
+  let inv = aux_get_inv (sort_poly p) (DBase.from_list polys) polys in
   mpoly_cmul (Int (-1)) inv
   with
   Not_found ->
