@@ -223,6 +223,13 @@ module MkMat : MATRULES = functor (Data : MATDATA) -> struct
             | MMult (MOpp a, b) -> MOpp (MMult (a,b))
             | MMult (a, MOpp b) -> MOpp (MMult (a,b))
             | MMult (a, MConcat (b,c)) -> MConcat (MMult (a,b), MMult (a,c))
+            | MMult (MConcat (a,b), c) -> 
+                    (* this rule is new *)
+                    let c1 = MTrans (MSplitLeft (MTrans c)) in
+                    let c2 = MTrans (MSplitRight (MTrans c)) in
+                    MPlus (Data.mult_shape (shape_of_mat a) (shape_of_mat c1),
+                          [MMult (a, c1); MMult (b,c2)])
+                           
             | MMult (MPlus (d,xs), y) -> MPlus (Data.mult_shape d (shape_of_mat y), (map (fun x -> MMult (x,y)) xs))
             | MMult (y, MPlus (d,xs)) -> MPlus (Data.mult_shape (shape_of_mat y) d, map (fun x -> MMult (y,x)) xs)
             | MOpp (MOpp e) -> e

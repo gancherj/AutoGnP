@@ -36,35 +36,17 @@ let tr_mi (mi : (Mat.mat * inverter)) : Mat.mat * inverter =
     (Mat.MTrans (fst mi), i_op mk_MatTrans (snd mi))
 
 
-let contains_splittable (mis : (Mat.mat * inverter) list) : bool =
-    List.exists (fun (m,_) -> Mat.shape_splittable (Mat.shape_of_expr (Mat.expr_of_mat m))) mis
-
-let mi_decomp_split_aux (mi : (Mat.mat * inverter)) : (Mat.mat * inverter) list =
+let rec full_split_mi (mi : (Mat.mat * inverter)) : (Mat.mat * inverter) list =
     let mshape = Mat.shape_of_expr (Mat.expr_of_mat (fst mi)) in
     if Mat.shape_splittable mshape then
-        [sl_mi mi; sr_mi mi]
-    else
-        [mi]
+        List.concat (List.map full_split_mi [sl_mi mi; sr_mi mi])
+    else if Mat.shape_leftsplittable mshape then
+        List.concat (List.map full_split_mi
+          [tr_mi (sl_mi (tr_mi mi)); tr_mi (sr_mi (tr_mi mi))])
+    else [mi]
 
-let rec mis_decomp_split (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter) list =
-    if contains_splittable mis then
-        mis_decomp_split (List.concat (List.map mi_decomp_split_aux mis))
-    else mis 
-
-let contains_leftsplittable (mis : (Mat.mat * inverter) list) : bool =
-    List.exists (fun (m,_) -> Mat.shape_leftsplittable (Mat.shape_of_expr (Mat.expr_of_mat m))) mis
-
-let mi_decomp_leftsplit_aux (mi : (Mat.mat * inverter)) : (Mat.mat * inverter) list =
-    let mshape = Mat.shape_of_expr (Mat.expr_of_mat (fst mi)) in
-    if Mat.shape_leftsplittable mshape then
-        [tr_mi (sl_mi (tr_mi mi)); tr_mi (sr_mi (tr_mi mi))]
-    else
-        [mi]
-
-let rec mis_decomp_leftsplit (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter) list =
-    if contains_leftsplittable mis then
-        mis_decomp_leftsplit (List.concat (List.map mi_decomp_leftsplit_aux mis))
-    else mis 
+let mis_decomp (mis : (Mat.mat * inverter) list) : (Mat.mat * inverter) list =
+    List.concat (List.map full_split_mi mis)
 
 let mis_add_trans (mis : (Mat.mat * inverter) list) =
     mis @ (List.map tr_mi mis)
@@ -79,13 +61,19 @@ let ei_of_mi (mi : Mat.mat * inverter) =
     ((Mat.expr_of_mat (fst mi), snd mi))
 
 (* pol_of_mat : translate splitleft, splitright, trans as atomic *)
+
+
+
 let rec pol_of_mat : Mat.mat -> MatMon.pol = function
     | Mat.MPlus (_, ms) -> List.concat (List.map pol_of_mat ms)
     | Mat.MOpp m -> MatGasbi.mpoly_cmul (Num.Int (-1)) (pol_of_mat m)
-    | Mat.MMult (m1,m2) -> MatGasbi.mpoly_mul (pol_of_mat m1) (pol_of_mat m2)
+    | Mat.MMult (m1,m2) -> 
+            MatGasbi.mpoly_mul (pol_of_mat m1) (pol_of_mat m2)
     | Mat.MTrans m -> 
             pol_of_base (Mat.elt_of_expr (mk_MatTrans (Mat.expr_of_mat m)))
-    | Mat.MConcat _ -> failwith "Translating concat!"
+    | Mat.MConcat (m1, m2) -> 
+            log_i (lazy (fsprintf "translating concat"));
+            failwith "concat"
     | Mat.MSplitLeft m -> 
             pol_of_base (Mat.elt_of_expr (mk_MatSplitLeft (Mat.expr_of_mat m)))
     | Mat.MSplitRight m -> 
@@ -162,8 +150,14 @@ let rec deduc_subgoals (sg : split_subgoals) (base : (MatMon.pol * inverter) lis
             (mk_MatTrans i2))))
     | SSBase m ->
             let targ_pol = pol_of_mat m in
-            let targ_invpol = MatGasbi.inverter targ_pol (List.map fst base) in
-            inverter_of_pol targ_invpol (List.map expr_of_inverter (List.map snd base)) 
+            try
+                let targ_invpol = MatGasbi.inverter targ_pol (List.map fst base) in
+                inverter_of_pol targ_invpol (List.map expr_of_inverter (List.map snd base)) 
+            with
+                Not_found ->
+                    log_i (lazy (fsprintf "failed deducing %a" pp_expr
+                    (Mat.expr_of_mat m)));
+                    raise Not_found
 
 let rec constant_pis (s : Mat.shape) : (MatMon.pol * inverter) list =
     List.map (fun ce -> let p = pol_of_base (Mat.elt_of_expr ce) in (p, I ce))
@@ -171,22 +165,24 @@ let rec constant_pis (s : Mat.shape) : (MatMon.pol * inverter) list =
 
 
 let solve_mat eis e = 
+
     (* compute target pol, split into subgoals *)
     let targ_m' = (Mat.mat_of_expr e) in
     let targ_sgs = norm_subgoals (subgoals_of_targ targ_m') in
     
-    (* compute input pols *)
+    (* compute input mats *)
     let mis = List.map mi_of_ei eis in
-    (* take transpose *)
-    let mis = mis_add_trans mis in
-    (* fully split *)
-    let mis = mis_decomp_split mis in
-    (* fully left split *)
-    let mis = mis_decomp_leftsplit mis in
-    (* take transpose *)
+    (* norm *)
+    let mis = norm_mis mis in
+    (* fullly split *)
+    let mis = mis_decomp mis in
+    (* add trans *)
     let mis = mis_add_trans mis in
     (* norm *)
     let mis = norm_mis mis in
+
+    log_i (lazy (fsprintf "Begin deducing with inputs %a" (pp_list "," pp_expr)
+    (List.map fst (List.map ei_of_mi mis))));
 
 
     let pis = List.map pi_of_mi mis in
@@ -198,9 +194,7 @@ let solve_mat eis e =
         deduc_subgoals targ_sgs pis
     with
         Not_found ->
-          log_i (lazy (fsprintf "Mat: from %a could not deduce subgoals %a"
-          (pp_list "," pp_expr) (List.map fst (List.map ei_of_mi mis))
-          pp_subgoals targ_sgs));
+            log_i (lazy (fsprintf "End deduce"));
           raise Not_found
          
 

@@ -110,40 +110,18 @@ bound_adv [
         lhl_orcl`se, dec_orcl`se;
         lhl_orcl`v, dec_orcl`v] 3 13 [4 [(1 1 6 lhl_orcl)]]. 
         unfold tt ans.
-        //=.
-
+        norm.
+        
+    rnd U (U -> -U) (U -> -U). norm.
     move u 2.
-    rnd U (U -> U + M(u) * Gadg(())) (U -> U - M(u) * Gadg(())).
+    rnd U (U -> U - M(u) * Gadg(())) (U -> U + M(u) * Gadg(())).
     norm.
-    rnd U (U -> -U) (U -> -U).
-    norm.
-    
-    trans* [
-      subst 9 (((s * A)) || (tr (Encode(b?p#0:p#1)) + ((s * U))) ->
-        s * (A || U) + (0_{1,m} || (tr (Encode(b?p#0:p#1)))))].
-    LR:norm.
-    dist_eq.
 
-    move 3 2.
-    move 8 3.
-    mat_fold 1 2 AU.
-    move 7 2.
-    //=.
-    
-    
-    abstract 4 tt (AU, s * AU + Gauss(re)).
-    trans* [
-      subst 9 (Gauss(re) + (0_{1,m} || tr (Encode(b?p#0:p#1))) + (s * tt#0) ->
-               tt#1 + (0_{1,m} || tr (Encode(b?p#0:p#1))))].
-        LR: norm.
-    dist_eq.
-    abstract 10 ans (b = b').
-    
-    assumption_decisional LWE -> [tt ans] z.
-    norm.
-    move z 6.
-
-    rnd z (z -> z - (0_{1,m} || tr (Encode(b?p#0:p#1)))) (z -> z + (0_{1,m} || tr (Encode(b?p#0:p#1)))).
-    norm.
+    mat_fold 1 3 Au.
+     assumption_decisional! LWE -> z.
+     norm.
+     move z 6.
+    rnd z (z -> z - (0_{1,m} || tr (Encode(b?p#0:p#1)))) (z -> z + (0_{1,m} || tr (Encode(b?p#0:p#1)))); //.
     indep!.
-qed.
+ qed.
+     
