@@ -87,6 +87,14 @@ let concat_compat_ty t1 t2 =
                     | _ -> false)
     | _ -> false
 
+let listconcat_compat_ty t1 t2 =
+    match t1.ty_node with
+    | List (d1, t) -> (match t2.ty_node with
+                      | List (d2, tp) -> (mdim_equal d1 d2) &&
+                      (concat_compat_ty t tp)
+                      | _ -> false)
+    | _ -> false
+
 let split_compat t =
     match t.ty_node with
     | Mat (_,a) -> (match a with 
@@ -104,7 +112,8 @@ let get_split_dim t =
 let dim_of_mat t =
     match t.ty_node with
     | Mat (x,y) -> (x,y)
-    | _ -> assert false
+    | _ ->
+            assert false
 
 let hash_ty t = t.ty_tag
 let compare_ty t1 t2 = t1.ty_tag - t2.ty_tag
@@ -215,6 +224,11 @@ let is_List ty = match ty.ty_node with
 let is_Mat ty = match ty.ty_node with
   | Mat _ -> true
   | _ -> false
+
+let is_ListOfTy t1 ty = 
+    match ty.ty_node with
+    | List (_, t2) -> equal_ty t1 t2
+    | _ -> false
 
 let is_MatList ty = match ty.ty_node with
   | List (_, t) -> is_Mat t

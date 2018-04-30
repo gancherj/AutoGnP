@@ -48,6 +48,7 @@ val compare_ty : ty -> ty -> int
 (* list specific *)
 val listmult_compat_ty : ty -> ty -> bool
 val get_list_ty : ty -> (mdim * ty)
+val listconcat_compat_ty : ty -> ty -> bool
 
 (* matrix specific *)
 val matmult_compat_ty : ty -> ty -> bool
@@ -84,6 +85,7 @@ val is_Fq	      : ty -> bool
 val is_Prod	      : ty -> bool
 val is_Mat        : ty -> bool
 val is_List       : ty -> bool
+val is_ListOfTy   : ty -> ty -> bool
 val is_MatList    : ty -> bool
 val is_Mat_splittable : ty -> bool
 val destr_G_exn	      : ty -> Groupvar.id

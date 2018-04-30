@@ -128,7 +128,7 @@ module ListMat : MATDATA = struct
     type shape = mdim * mdim * mdim
     let pp_shape (s1,s2,s3) =
         "("^(pp_mdim s1)^","^(pp_mdim s2)^","^(pp_mdim s3)^")"
-    type elt = LBase of expr | LOf of mdim * expr
+    type elt = LBase of expr | LOf of mdim * expr (* LOf only for embedded mats. *)
     type mat =
         | MPlus of shape * mat list
         | MOpp of mat
@@ -167,9 +167,11 @@ module ListMat : MATDATA = struct
         mdim_equal b e &&
         mdim_equal c f
 
+    (* bad *)
     let shape_of_elt e =
         match e with
-        | LBase e -> let (a,f) = get_list_ty e.e_ty in
+        | LBase e -> 
+                     let (a,f) = get_list_ty e.e_ty in
                      let (b,c) = dim_of_mat f in
                      (a,b,c)
         | LOf (a,t) -> let (b,c) = dim_of_mat (t.e_ty) in (a,b,c)
@@ -195,8 +197,11 @@ module ListMat : MATDATA = struct
                     let (a,f) = get_list_ty e.e_ty in
                     let (b,c) = dim_of_mat f in MId (a,b,c)
                 | _ -> 
-                    let (a,_) = get_list_ty e.e_ty in    
-                    MBase (LOf (a, e')))
+                    match e'.e_ty.ty_node with
+                    | Mat _ ->
+                        let (a,_) = get_list_ty e.e_ty in    
+                        MBase (LOf (a, e')))
+                    | _ -> MBase (LBase e)
         | _ -> MBase (LBase e)
 
     let rec expr_of_mat m = 
@@ -234,8 +239,8 @@ module ListMat : MATDATA = struct
 
 
     let default_shape = (MDBase (Lenvar.mk "1"), MDBase (Lenvar.mk "1"), MDBase (Lenvar.mk "1"))
-    let mult_shape_compat (_,b,_) (c,_,_) =
-        mdim_equal b c
+    let mult_shape_compat (_,_,n) (_,m,_) =
+        mdim_equal n m
     let neg_shape = (MDBase (Lenvar.mk "-1"), MDBase (Lenvar.mk "-1"), MDBase (Lenvar.mk "-1"))
 
     let expr_of_elt = function
@@ -246,6 +251,36 @@ module ListMat : MATDATA = struct
 
     let id_of_shape (a,b,c) = mk_ListOf a (mk_MatId b c)
 
-    let all_constants_of_shape s = failwith "unimp"
+    let all_constants_of_shape (d,dx,dy) = 
+        let shape_id (t1,t2,t3) = if Type.mdim_equal t2 t3 then [mk_ListOf t1 (mk_MatId t2 t3)] else [] in
+        let shape_zero (t1,t2,t3) = [mk_ListOf t1 (mk_MatZero t2 t3)] in
+        
+        let rec go s t =
+            (shape_id (d,s,t)) @ (shape_zero (d,s,t)) @ (
+                match s with
+                | MDPlus (s1, s2) ->
+                        (match t with
+                         | MDPlus (t1, t2) ->
+                                 (go s1 (MDPlus (t1, t2))) @
+                                 (go s1 t1) @
+                                 (go s1 t2) @
+                                 (go s2 (MDPlus (t1, t2))) @
+                                 (go s2 t1) @
+                                 (go s2 t2) @
+                                 (go (MDPlus (s1, s2)) t1) @
+                                 (go (MDPlus (s1, s2)) t2)
+                         | MDBase _ ->
+                                 (go s1 t) @
+                                 (go s2 t))
+                | MDBase _ ->
+                        (match t with
+                         | MDPlus (t1, t2) ->
+                                 (go s t1) @
+                                 (go s t2)
+                         | MDBase _ ->
+                                 []))
+       in
+       go dx dy
+
 end
 

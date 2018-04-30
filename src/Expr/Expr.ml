@@ -232,6 +232,8 @@ let ensure_ty_equal ty1 ty2 e1 e2 s =
 let ensure_listmult_compat ty1 ty2 e1 e2 s =
     ignore (listmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
+let ensure_listconcat_compat ty1 ty2 e1 e2 s =
+    ignore (listconcat_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
 
 let ensure_matmult_compat ty1 ty2 e1 e2 s =
     ignore (matmult_compat_ty ty1 ty2 || raise (TypeError(ty1,ty2,e1,e2,s)))
@@ -241,6 +243,11 @@ let ensure_concat_compat ty1 ty2 e1 e2 s =
 
 let ensure_split_compat ty e s =
     ignore (split_compat ty || raise (TypeError(ty, ty, e, None, s)))
+
+let ensure_listsplit_compat ty e s =
+    match ty.ty_node with
+    | List (_, t) -> ensure_split_compat t e s
+    | _ -> assert false
 
 let ensure_mat_ty ty = 
     match ty.ty_node with
@@ -404,9 +411,33 @@ let mk_ListOp op es =
             let (d,_) = get_list_ty a.e_ty in
             let (n,m) = get_mat_mdims a.e_ty in
             mk_App (ListOp MatOpp) [a] (mk_List d (mk_Mat n m))
-    | MatConcat, _ -> failwith "concat"
-    | MatSplitLeft, _ -> failwith "splitleft"
-    | MatSplitRight, _ -> failwith "splitRight"
+    | MatTrans, [a] ->
+            let (d,_) = get_list_ty a.e_ty in
+            let (n,m) = get_mat_mdims a.e_ty in
+            mk_App (ListOp MatTrans) [a] (mk_List d (mk_Mat m n))
+    | MatConcat, [a;b] -> 
+            ensure_listconcat_compat a.e_ty b.e_ty a (Some b) "mk_ListConcat";
+            let (d, t1) = get_list_ty a.e_ty in
+            let (_, t2) = get_list_ty b.e_ty in
+            let (n,m1) = get_mat_mdims a.e_ty in
+            let (_, m2) = get_mat_mdims b.e_ty in
+            mk_App (ListOp MatConcat) [a;b] (mk_List d (mk_Mat n
+            (MDPlus(m1,m2))))
+
+    | MatSplitLeft, [a] -> 
+            ensure_listsplit_compat a.e_ty a "mk_ListSplitLeft";
+            let (d, t) = get_list_ty a.e_ty in
+            let (n,_) = ensure_mat_ty t in
+            let (d1, _) = get_split_dim t in
+            mk_App (ListOp MatSplitLeft) [a] (mk_List d (mk_Mat n d1))
+
+    | MatSplitRight, [a] -> 
+            ensure_listsplit_compat a.e_ty a "mk_ListSplitLeft";
+            let (d, t) = get_list_ty a.e_ty in
+            let (n,_) = ensure_mat_ty t in
+            let (_, d2) = get_split_dim t in
+            mk_App (ListOp MatSplitLeft) [a] (mk_List d (mk_Mat n d2))
+
     | _ -> failwith "unsupported list op"
 
 
