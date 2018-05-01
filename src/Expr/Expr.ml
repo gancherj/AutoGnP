@@ -432,11 +432,11 @@ let mk_ListOp op es =
             mk_App (ListOp MatSplitLeft) [a] (mk_List d (mk_Mat n d1))
 
     | MatSplitRight, [a] -> 
-            ensure_listsplit_compat a.e_ty a "mk_ListSplitLeft";
+            ensure_listsplit_compat a.e_ty a "mk_ListSplitRight";
             let (d, t) = get_list_ty a.e_ty in
             let (n,_) = ensure_mat_ty t in
             let (_, d2) = get_split_dim t in
-            mk_App (ListOp MatSplitLeft) [a] (mk_List d (mk_Mat n d2))
+            mk_App (ListOp MatSplitRight) [a] (mk_List d (mk_Mat n d2))
 
     | _ -> failwith "unsupported list op"
 
@@ -466,6 +466,13 @@ let mk_MatTrans a =
     let (n,m) = ensure_mat_ty a.e_ty in
     mk_App (MatTrans) [a] (mk_Mat m n)
 
+let mk_Trans a =
+    match a.e_ty.ty_node with
+    | Mat _ -> mk_MatTrans a
+    | List _ -> mk_ListMatTrans a
+    | _ -> failwith "bad trans argument"
+
+
 let mk_MatSplitLeft a =
     ensure_split_compat a.e_ty a "mk_MatSplitLeft";
     let (n, _) = ensure_mat_ty a.e_ty in
@@ -478,11 +485,31 @@ let mk_MatSplitRight a =
     let (_, d2) = get_split_dim a.e_ty in
     mk_App (MatSplitRight) [a] (mk_Mat n d2)
 
+let mk_SplitLeft a =
+    match a.e_ty.ty_node with
+    | Mat _ -> mk_MatSplitLeft a
+    | List _ -> mk_ListMatSplitLeft a
+    | _ -> failwith "bad trans argument"
+
+let mk_SplitRight a =
+    match a.e_ty.ty_node with
+    | Mat _ -> mk_MatSplitRight a
+    | List _ -> mk_ListMatSplitRight a
+    | _ -> failwith "bad trans argument"
+
+
 let mk_MatConcat a b =
     ensure_concat_compat a.e_ty b.e_ty a (Some b) "mk_MatConcat";
     let (n,m1) = ensure_mat_ty a.e_ty in
     let (_,m2) = ensure_mat_ty b.e_ty in
     mk_App (MatConcat) [a;b] (mk_Mat n (MDPlus(m1,m2)))
+
+let mk_Concat a b =
+    match a.e_ty.ty_node with
+    | Mat _ -> mk_MatConcat a b
+    | List _ -> mk_ListOp (MatConcat) [a;b]
+    | _ -> failwith "bad trans argument"
+
 
 (* *** Nary mk functions *)
 

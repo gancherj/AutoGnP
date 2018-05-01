@@ -222,39 +222,80 @@ let ct_conv do_norm_terms new_se = prove_by (r_conv do_norm_terms new_se)
 
 let ensure_ty_unfold wh ty = if wh then
     match ty.ty_node with
-    | Mat (a, MDPlus(b,c)) -> ((b,c), a)
+    | Mat (a, MDPlus(b,c)) -> ()
+    | List (l, t1) ->
+            begin match t1.ty_node with
+            | Mat (a, MDPlus (b,c)) -> ()
+            | _ -> tacerror "bad mat"
+            end
     | _ -> tacerror "bad mat: got %a" pp_ty ty
 else
     match ty.ty_node with
-    | Mat (MDPlus(a,b),c) -> ((a,b), c)
+    | Mat (MDPlus(a,b),c) -> ()
+    | List (l, t1) ->
+            begin match t1.ty_node with
+            | Mat (MDPlus(a,b), c) -> ()
+            | _ -> tacerror "bad mat"
+            end
     | _ -> tacerror "bad mat: got %a" pp_ty ty
 
 let split_ty_unfold wh ty = if wh then
     match ty.ty_node with
     | Mat (a, MDPlus(b,c)) -> (mk_Mat a b, mk_Mat a c)
+    | List (l, t1) ->
+            begin match t1.ty_node with
+            | Mat (a, MDPlus (b,c)) -> (mk_List l (mk_Mat a b), mk_List l (mk_Mat a c))
+            | _ -> tacerror "bad mat"
+            end
     | _ -> assert false
 else
     match ty.ty_node with
     | Mat (MDPlus(a,b),c) -> (mk_Mat a c, mk_Mat b c)
+    | List (l, t1) ->
+            begin match t1.ty_node with
+            | Mat (MDPlus(a,b), c) -> (mk_List l (mk_Mat a c), mk_List l (mk_Mat b c))
+            | _ -> tacerror "bad mat"
+            end
     | _ -> assert false
 
 let ensure_ty_fold wh ty1 ty2 = if wh then
     match ty1.ty_node, ty2.ty_node with
-    | Mat(a, b), Mat(c,d) when mdim_equal a c -> (a, b, d)
+    | Mat(a, b), Mat(c,d) when mdim_equal a c -> ()
+    | List(l, t1), List(l',t2) when mdim_equal l l' ->
+            begin match t1.ty_node, t2.ty_node with
+            | Mat (a,b), Mat(c,d) when mdim_equal a c -> ()
+            | _ -> tacerror "bad mats"
+            end
     | _,_ -> tacerror "bad mats: %a, %a" pp_ty ty1 pp_ty ty2
 else
     match ty1.ty_node, ty2.ty_node with
-    | Mat(a,b), Mat(c,d) when mdim_equal b d -> (a, c, d)
+    | Mat(a,b), Mat(c,d) when mdim_equal b d -> ()
+    | List(l, t1), List(l', t2) when mdim_equal l l' ->
+            begin match t1.ty_node, t2.ty_node with
+            | Mat (a,b), Mat (c,d) when mdim_equal b d -> ()
+            | _ -> tacerror "bad mats"
+            end
     | _,_ -> tacerror "bad mats: %a, %a" pp_ty ty1 pp_ty ty2
 
 let ty_fold wh ty1 ty2 = if wh then
     match ty1.ty_node, ty2.ty_node with
     | Mat(a,b), Mat(_c,d) -> mk_Mat a (MDPlus(b,d))
+    | List(l, t1), List(_, t2) ->
+            begin match t1.ty_node, t2.ty_node with
+            | Mat (a,b), Mat(c,d) -> mk_List l (mk_Mat a (MDPlus (b,d)))
+            | _ -> assert false
+            end
     | _,_ -> assert false
 else
     match ty1.ty_node, ty2.ty_node with
-    | Mat(a,_b), Mat(c,d) -> mk_Mat (MDPlus(a,c)) d
+    | Mat(a,_), Mat(c,d) -> mk_Mat (MDPlus (a,c)) d
+    | List(l, t1), List(_, t2) ->
+            begin match t1.ty_node, t2.ty_node with
+            | Mat (a,_), Mat(c,d) -> mk_List l (mk_Mat (MDPlus (a,c)) d)
+            | _ -> assert false
+            end
     | _,_ -> assert false
+
 
 let r_matfold (m : string option) wh i j ju  = 
     if i >= j then tacerror "first must be earlier";
@@ -271,12 +312,12 @@ let r_matfold (m : string option) wh i j ju  =
           ab_ty in
       let ab = mk_V sab in
       let subst e = if wh then 
-          let e1 = e_replace (mk_V a) (mk_MatSplitLeft ab) e in
-          e_replace (mk_V b) (mk_MatSplitRight ab) e1
+          let e1 = e_replace (mk_V a) (mk_SplitLeft ab) e in
+          e_replace (mk_V b) (mk_SplitRight ab) e1
       else
-          let e1 = e_replace (mk_V a) (mk_MatTrans (mk_MatSplitLeft (mk_MatTrans
+          let e1 = e_replace (mk_V a) (mk_Trans (mk_SplitLeft (mk_Trans
           ab))) e in
-          e_replace (mk_V b) (mk_MatTrans (mk_MatSplitRight (mk_MatTrans ab)))
+          e_replace (mk_V b) (mk_Trans (mk_SplitRight (mk_Trans ab)))
           e1
       in
       let se = set_se_ctxt [ GSamp(sab, (ab.e_ty, [])) ] sec1 in (* set a samp to
@@ -304,9 +345,9 @@ let r_matunfold (p : (string * string) option) wh i ju  =
       let sb = VarSym.mk (mk_name ~name:sb_n se) b_ty in
       let a = mk_V sa in
       let b = mk_V sb in
-      let subst = if wh then fun e -> e_replace (mk_V ab) (mk_MatConcat a b) e
-                  else fun e -> e_replace (mk_V ab) (mk_MatTrans (mk_MatConcat
-                  (mk_MatTrans a) (mk_MatTrans b))) e in
+      let subst = if wh then fun e -> e_replace (mk_V ab) (mk_Concat a b) e
+                  else fun e -> e_replace (mk_V ab) (mk_Trans (mk_Concat
+                  (mk_Trans a) (mk_Trans b))) e in
       let se = set_se_ctxt [ GSamp(sa, (a.e_ty, [])); GSamp(sb, (b.e_ty, [])) ] sec in
       let se = map_se_exp subst se in
       Rmatunfold(wh,i), [ {ju with ju_se = se } ] 

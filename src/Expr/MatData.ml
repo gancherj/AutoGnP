@@ -167,7 +167,6 @@ module ListMat : MATDATA = struct
         mdim_equal b e &&
         mdim_equal c f
 
-    (* bad *)
     let shape_of_elt e =
         match e with
         | LBase e -> 
@@ -239,7 +238,8 @@ module ListMat : MATDATA = struct
 
 
     let default_shape = (MDBase (Lenvar.mk "1"), MDBase (Lenvar.mk "1"), MDBase (Lenvar.mk "1"))
-    let mult_shape_compat (_,_,n) (_,m,_) =
+    let mult_shape_compat (d1,_,n) (d2,m,_) =
+        mdim_equal d1 d2 &&
         mdim_equal n m
     let neg_shape = (MDBase (Lenvar.mk "-1"), MDBase (Lenvar.mk "-1"), MDBase (Lenvar.mk "-1"))
 

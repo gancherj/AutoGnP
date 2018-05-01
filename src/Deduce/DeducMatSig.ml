@@ -128,8 +128,10 @@ let rec pol_of_mat : M.mat -> MatMon.pol = function
             pol_of_base (M.elt_of_expr (mkSplitLeft (M.expr_of_mat m)))
     | M.MSplitRight m -> 
             pol_of_base (M.elt_of_expr (mkSplitRight (M.expr_of_mat m)))
-    | M.MId s -> failwith "identity matrix"
-    | M.MZero s -> failwith "zero matrix"
+    | M.MId s -> 
+            pol_of_base (M.elt_of_expr (M.expr_of_mat (M.MId s)))
+    | M.MZero s -> 
+            pol_of_base (M.elt_of_expr (M.expr_of_mat (M.MZero s)))
     | M.MBase exp -> pol_of_base exp
 in
 

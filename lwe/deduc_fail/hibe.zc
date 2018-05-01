@@ -221,6 +221,7 @@ bound_adv [
   move s 2.
   move chir0 3.
   move chir1 4.
+  assumption_decisional! LWE -> . 
   abstract 5 lwett (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
   abstract 12 ans (b = b').
   //=.
