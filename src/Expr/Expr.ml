@@ -254,6 +254,11 @@ let ensure_mat_ty ty =
     | Mat (n,m) -> (n,m)
     | _ -> failwith (fsprintf "Matrix expected: got %a" pp_ty ty)
 
+let ensure_list_ty ty s =
+    match ty.ty_node with
+    | List (d, t) -> (d,t)
+    | _ -> failwith (fsprintf "List expected: got %a from %s" pp_ty ty s) 
+
 let rec get_mat_mdims ty =
     match ty.ty_node with
     | Mat (n,m) -> (n,m)
@@ -403,22 +408,22 @@ let mk_ListOp op es =
     match op,es with
     | MatMult, [a;b] -> 
         ensure_listmult_compat a.e_ty b.e_ty a (Some b) "mk_ListMult";
-        let (d1, t1) = get_list_ty a.e_ty in
-        let (_, t2) = get_list_ty b.e_ty in
+        let (d1, t1) = ensure_list_ty a.e_ty "" in
+        let (_, t2) = ensure_list_ty b.e_ty "" in
         let (n,m) = matmult_get_dim t1 t2 in
         mk_App (ListOp MatMult) [a;b] (mk_List d1 (mk_Mat n m))
     | MatOpp, [a] -> 
-            let (d,_) = get_list_ty a.e_ty in
+            let (d,_) = ensure_list_ty a.e_ty "" in
             let (n,m) = get_mat_mdims a.e_ty in
             mk_App (ListOp MatOpp) [a] (mk_List d (mk_Mat n m))
     | MatTrans, [a] ->
-            let (d,_) = get_list_ty a.e_ty in
+            let (d,_) = ensure_list_ty a.e_ty "" in
             let (n,m) = get_mat_mdims a.e_ty in
             mk_App (ListOp MatTrans) [a] (mk_List d (mk_Mat m n))
     | MatConcat, [a;b] -> 
             ensure_listconcat_compat a.e_ty b.e_ty a (Some b) "mk_ListConcat";
-            let (d, t1) = get_list_ty a.e_ty in
-            let (_, t2) = get_list_ty b.e_ty in
+            let (d, t1) = ensure_list_ty a.e_ty "" in
+            let (_, t2) = ensure_list_ty b.e_ty "" in
             let (n,m1) = get_mat_mdims a.e_ty in
             let (_, m2) = get_mat_mdims b.e_ty in
             mk_App (ListOp MatConcat) [a;b] (mk_List d (mk_Mat n
@@ -426,14 +431,14 @@ let mk_ListOp op es =
 
     | MatSplitLeft, [a] -> 
             ensure_listsplit_compat a.e_ty a "mk_ListSplitLeft";
-            let (d, t) = get_list_ty a.e_ty in
+            let (d, t) = ensure_list_ty a.e_ty "" in
             let (n,_) = ensure_mat_ty t in
             let (d1, _) = get_split_dim t in
             mk_App (ListOp MatSplitLeft) [a] (mk_List d (mk_Mat n d1))
 
     | MatSplitRight, [a] -> 
             ensure_listsplit_compat a.e_ty a "mk_ListSplitRight";
-            let (d, t) = get_list_ty a.e_ty in
+            let (d, t) = ensure_list_ty a.e_ty "" in
             let (n,_) = ensure_mat_ty t in
             let (_, d2) = get_split_dim t in
             mk_App (ListOp MatSplitRight) [a] (mk_List d (mk_Mat n d2))
@@ -534,7 +539,7 @@ let mk_MatPlus_safe es ty = match es with
     | _ -> mk_MatPlus es
 
 let mk_ListMatPlus_safe es ty = match es with
-    | [] -> let (n,m) = get_mat_mdims ty in let (a,_) = get_list_ty ty in mk_ListOfMatZero a n m
+    | [] -> let (n,m) = get_mat_mdims ty in let (a,_) = ensure_list_ty ty "" in mk_ListOfMatZero a n m
     | _ -> mk_ListNop MatPlus es
 
 let valid_Xor_type ty =

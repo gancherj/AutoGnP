@@ -7,11 +7,11 @@ operator ListTail : (List_{d} Matrix_{n,m} * List_{d} BS_id) -> List_{d} Matrix_
 adversary intro_adv : () -> Bool.
 assumption introduce_ai [Ai <-$ List_{d} Matrix_{n,m}; b <- intro_adv(); ] [b <- intro_adv();].
 
-operator Chi0 : BS_chi -> Matrix_{m,1}.
-operator Chi1 : BS_chi -> Matrix_{1,1}.
+operator Chi0 : BS_chi0 -> Matrix_{m,1}.
+operator Chi1 : BS_chi1 -> Matrix_{1,1}.
 adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
 assumption LWE
-[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chi; chir1 <-$ BS_chi; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
+[ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chi0; chir1 <-$ BS_chi1; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
 
 
@@ -108,8 +108,8 @@ bound_adv [
   let Hid' = ListIdHash(id');
     s <-$ Matrix_{n,1};
   rinjr <-$ BS_rinjr; let R = Rinj(rinjr);
-    chir0 <-$ BS_chi; let e0 = Chi0(chir0);
-    chir1 <-$ BS_chi; let e1 = Chi1(chir1);
+    chir0 <-$ BS_chi0; let e0 = Chi0(chir0);
+    chir1 <-$ BS_chi1; let e1 = Chi1(chir1);
   let F = (A, Ai + Hid' * [B]_{d});
   let c0 = ((tr s) * F#0 + (tr e0), [tr s]_{d} * F#1 + [tr e0]_{d} * R);
   let c1 = (tr s) * u + (tr e1) + Minj(b);
@@ -138,7 +138,7 @@ bound_adv [
   move Ai 3.
   abstract 4 tta ().
   move chir0 5.
-  abstract 6 resa ([(tr Chi0(chir0))]_{d}).
+  abstract 6 resa (tr [(Chi0(chir0))]_{d}).
   abstract 7 tta2 (tgr, TrapGen(tgr)#0, Ai, resa * Rinj(rinjr)).
   abstract 15 res2 (b = b').
   assumption_decisional LLHL <- [tta resa] [tta2 res2] .
@@ -190,47 +190,14 @@ bound_adv [
   norm_solve tt2.
   assumption_decisional * dec_SL_SR -> [tgr, tgr; A, A; rinjr, rinjr; TA, TA; B, B; u, u; id', res1; A_SL_O`slr, Derive`slr; b, res2; A_SL_O`tt, Derive`tt; A_SL_O`idold, Derive`idold; A_SL_O`idnew, Derive`idnew; A_SL_O`skidold, Derive`skidold] 7 9 [] 10 24 [23 [(1 1 9 A_SL_O)]].
   norm.
-(*
-   abstract 1 tt1 ().
-   move s 2.
-   abstract 3 res1 (tr s).
-   abstract 4 tt2 ().
-   move A 5.
-   abstract 6 res2 (A).
-   abstract 7 tt3 ( (ListOfn(res1) * ListOf(res2))).
-   abstract 17 res3 (b = b').
-   assumption_decisional ListOfMul -> [1 3] [4 6] [7 17].
-   norm.
-   subst ( (ListOfm(tr (Chi0(chir0))) * Rinj(rinjr))
-               + (ListOfm(tr (s) * A) * Rinj(rinjr)) -> (ListOfm(tr (Chi0 (chir0))) + ListOfm (tr s * A)) * Rinj(rinjr)).
-   abstract 1 tt1 ().
-   move chir0 2.
-   abstract 3 res1 (tr (Chi0 (chir0))).
-   abstract 4 tt2 ().
-   move s 5.
-   move A 6.
-   abstract 7 res2 (tr s * A).
-   abstract 8 tt3 (ListOfm(res1) + ListOfm(res2)).
-   abstract 17 res3 (b = b').
-   assumption_decisional ListOfmPlus -> [1 3] [4 7] [8 17].
-   norm.
-    *)
    
   mat_fold 3 4 Au.
   move Au 1.
   move s 2.
   move chir0 3.
   move chir1 4.
-  assumption_decisional! LWE -> . 
-  abstract 5 lwett (Au, (tr Au) * s + tr (tr Chi0(chir0) || tr Chi1(chir1))).
-  abstract 12 ans (b = b').
   //=.
-   subst ((tr (Chi0(chir0)) + (tr (s) * sl (lwett#0))) -> sl tr lwett#1).
-   subst (Minj(b) + tr (Chi1(chir1)) + (tr (s) * sr (lwett#0)) -> Minj(b) + sr tr lwett#1).
-   subst ([tr (Chi0(chir0))]_{d} * Rinj(rinjr) + [tr (s)]_{d} * [sl (lwett#0)]_{d} * Rinj(rinjr) ->
-         ([sl tr lwett#1]_{d}) * Rinj(rinjr)).
-   
-   assumption_decisional LWE -> [lwett ans] r__.
+  assumption_decisional! LWE -> . 
    norm.
    rnd r__ (x -> tr x) (x -> tr x); //.
    mat_unfold 2.

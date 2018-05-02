@@ -170,7 +170,7 @@ module ListMat : MATDATA = struct
     let shape_of_elt e =
         match e with
         | LBase e -> 
-                     let (a,f) = get_list_ty e.e_ty in
+                     let (a,f) = ensure_list_ty e.e_ty "shapeofelt" in
                      let (b,c) = dim_of_mat f in
                      (a,b,c)
         | LOf (a,t) -> let (b,c) = dim_of_mat (t.e_ty) in (a,b,c)
@@ -185,20 +185,20 @@ module ListMat : MATDATA = struct
         | App(ListOp MatSplitLeft, [e]) -> MSplitLeft (mat_of_expr e)
         | App(ListOp MatSplitRight, [e]) -> MSplitRight (mat_of_expr e)
         | Nary(ListNop MatPlus, es) -> 
-                let (a,f) = get_list_ty (List.hd es).e_ty in
+                let (a,f) = ensure_list_ty (List.hd es).e_ty "matofexpr_matplus" in
                 let (b,c) = dim_of_mat f in
                 MPlus ((a,b,c), List.map mat_of_expr es)
         | App(ListOf, [e']) -> 
                 (match e'.e_node with
-                | Cnst (MatZero) -> let (a,f) = get_list_ty e.e_ty in
+                | Cnst (MatZero) -> let (a,f) = ensure_list_ty e.e_ty "matofexpr_listof" in
                                     let (b,c) = dim_of_mat f in MZero (a,b,c)
                 | Cnst (MatId) ->
-                    let (a,f) = get_list_ty e.e_ty in
+                    let (a,f) = ensure_list_ty e.e_ty "matofexpr_listof" in
                     let (b,c) = dim_of_mat f in MId (a,b,c)
                 | _ -> 
                     match e'.e_ty.ty_node with
                     | Mat _ ->
-                        let (a,_) = get_list_ty e.e_ty in    
+                        let (a,_) = ensure_list_ty e.e_ty "matofexpr_listof" in    
                         MBase (LOf (a, e')))
                     | _ -> MBase (LBase e)
         | _ -> MBase (LBase e)
@@ -219,6 +219,8 @@ module ListMat : MATDATA = struct
 
     (* [a + b] -> [a] + [b] *)
     (* [a * b] -> [a] * [b] *)
+    (* [tr x] -> tr [x] *)
+    (* [a || b] -> [a] || [b] *)
     let extra_rewr m =
         match m with
         | MBase (LOf (d, e)) ->
@@ -228,11 +230,21 @@ module ListMat : MATDATA = struct
                         MPlus ((d,b,c), List.map (fun x -> MBase (LOf (d, x))) es)
                 | App(MatMult, [e1;e2]) ->
                         MMult (MBase (LOf (d, e1)), MBase (LOf (d, e2)))
+                | App(MatTrans, [e1]) ->
+                        MTrans (MBase (LOf (d, e1)))
+                | App (MatConcat, [e1;e2]) ->
+                        MConcat (MBase (LOf (d, e1)), MBase (LOf (d,e2)))
+                | App (MatSplitRight, [e1]) ->
+                        MSplitRight (MBase (LOf (d, e1)))
+                | App (MatSplitLeft, [e1]) ->
+                        MSplitLeft (MBase (LOf (d, e1)))
+                | App (MatOpp, [e1]) ->
+                        MOpp (MBase (LOf (d, e1)))
                 | _ -> m)
         | _ -> m
 
     let shape_of_expr e = 
-        let (a,f) = get_list_ty e.e_ty in
+        let (a,f) = ensure_list_ty e.e_ty "shapeofexpr" in
         let (b,c) = dim_of_mat f in
         (a,b,c)
 

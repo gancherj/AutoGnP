@@ -221,7 +221,6 @@ let rec constant_pis (s : M.shape) : (MatMon.pol * inverter) list =
     (M.all_constants_of_shape s)
 in
 
-
     (* compute target pol, split into subgoals *)
     let targ_m' = (M.mat_of_expr e) in
     let targ_sgs = norm_subgoals (subgoals_of_targ targ_m') in

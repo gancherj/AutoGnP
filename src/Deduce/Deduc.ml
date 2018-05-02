@@ -18,6 +18,7 @@ exception Found of expr
 
 let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
   let to_ = Norm.norm_expr_strong to_ in
+  (* Will be initialized to hold known_es *)
   let known = He.create 17 in
   let progress = ref false in
   let is_in e = is_Cnst e || He.mem known e in
@@ -35,6 +36,8 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       progress := true;
       add_subterms e inv
     )
+
+  (* Called in add_known above. Adds subterms of e to known if applicable. *)
   and add_subterms e inv =
     match e.e_node with
     | V _  | Proj _ | Cnst _ -> ()
@@ -46,6 +49,11 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | FOpp, _             -> add_known e (mk_FOpp inv)
       | FInv, [e]           -> add_known e (mk_FInv inv)
       | Not, [e]            -> add_known e (mk_Not inv)
+      | ListOf, [e]         -> 
+              begin match inv.e_node with
+              | App(ListOf, [i]) -> add_known e i
+              | _ -> failwith "bad inverter for listof"
+              end
       | ListOp MatTrans, [e]-> add_known e (mk_ListMatTrans inv)
       | MatTrans, [e]       -> add_known e (mk_MatTrans inv)
       | MatOpp, _           -> add_known e (mk_MatOpp inv)
@@ -142,9 +150,9 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | MatMult|MatOpp|MatTrans|MatConcat|MatSplitLeft|MatSplitRight ->
           if not in_field then add_sub_solver e; List.iter (register_subexprs true) es 
       | ListOp _ -> 
-              add_sub e; List.iter (register_subexprs in_field) es 
+          if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | ListOf ->
-              add_sub e; List.iter (register_subexprs in_field) es 
+          add_sub e; List.iter (register_subexprs false) es
 
       (*
       | FDiv ->
@@ -162,7 +170,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | MatPlus ->
         if not in_field then add_sub_solver e; List.iter (register_subexprs true) es
       | ListNop _ ->
-        add_sub_solver e; List.iter (register_subexprs false) es
+          if not in_field then add_sub e; List.iter (register_subexprs true) es
       end
       (* normal form is g^log(v) and must have been already added *)
     | V _ when is_G e.e_ty -> ()
@@ -228,8 +236,16 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
     | ListOp MatSplitLeft, [e1] -> construct1 e e1 mk_ListMatSplitLeft
     | ListOp MatSplitRight, [e1] -> construct1 e e1 mk_ListMatSplitRight
     | ListOf, [e1] -> 
-            let (d,_) = Type.get_list_ty (e.e_ty) in
-            construct1 e e1 (mk_ListOf d)
+            log_i (lazy (fsprintf "want to construct %a : %a from %a " pp_expr e
+            pp_ty e.e_ty pp_expr e1));
+
+            begin
+            match e.e_ty.ty_node with
+            | List (d, _) -> construct1 e e1 (mk_ListOf d)
+            | t -> log_i (lazy (fsprintf "bad type? got %a" pp_ty (e.e_ty)));
+            tacerror "type error"
+            end
+
     | _, _ -> assert false
 
   in
@@ -267,7 +283,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
       | Mat _        -> DeducMat.solve_mat, fun t -> is_Mat t 
       | List p       -> 
               (match (snd p).ty_node with
-              | Mat _ -> DeducList.solve_mat_list, fun t -> is_MatList t
+              | Mat _ -> DeducList.solve_mat_list, fun t -> is_Mat t || is_MatList t
               | _ -> DeducList.solve_other_list, fun t2 -> is_ListOfTy (snd p) t2)
       | TySym _ | Prod _ | Int -> assert false
     in
@@ -329,4 +345,7 @@ let invert' ?ppt_inverter:(ppt=false) emaps do_div known_es to_ =
 let invert ?ppt_inverter:(ppt=false) ts known_es to_ =
   let open TheoryTypes in
   let emaps = L.map snd (Mstring.bindings ts.ts_emdecls) in
+  log_i (lazy (fsprintf "Begin inverting %a from %a " pp_expr to_ (pp_list ","
+  pp_expr) (List.map fst known_es)));
+
   invert' ~ppt_inverter:ppt emaps false known_es to_

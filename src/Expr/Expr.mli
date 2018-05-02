@@ -122,6 +122,7 @@ module Me : Map.S with type key = expr
 exception TypeError of (ty *  ty * expr * expr option * string)
 
 val ensure_ty_G : Type.ty -> string -> Type.Groupvar.id
+val ensure_list_ty : Type.ty -> string -> Type.mdim * Type.ty
 val ensure_mat_ty : Type.ty -> Type.mdim * Type.mdim
 val get_mat_mdims : Type.ty -> Type.mdim * Type.mdim
 
