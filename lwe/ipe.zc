@@ -1,0 +1,86 @@
+
+operator Chi0 : BS_chi0 -> Matrix_{1,m}.
+operator Chi1 : BS_chi1 -> Matrix_{1,1}.
+
+adversary ALWE : (Matrix_{n,m+1} * Matrix_{1,m+1}) -> Bool.
+assumption LWE [
+  A <-$ Matrix_{n,m + 1};
+  s <-$ Matrix_{n,1};
+  chir0 <-$ BS_chi0;
+  chir1 <-$ BS_chi1;
+  b <- ALWE(A, tr s * A + (Chi0(chir0) || Chi1(chir1)));
+  ]
+  [
+    A <-$ Matrix_{n,m+1};
+    U <-$ Matrix_{1,m+1};
+    b <- ALWE(A, U);
+    ].
+  
+
+operator Gadg: (()) -> Matrix_{n,m}.
+
+operator Scale : (List_{d} Matrix_{1,1} * List_{d} Matrix_{n,m}) -> List_{d} Matrix_{n,m}.
+operator GadgConj : List_{d} Matrix_{1,1} -> List_{d} Matrix_{m,m}.
+
+operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
+operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) ->  Matrix_{1,m+m}.
+operator SampleRight : (BS_sr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{1,n}) -> Matrix_{1,m + m}.
+
+
+operator Sum : List_{d} Matrix_{n,m} -> Matrix_{n,m}.
+
+
+operator IP : (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}) -> Matrix_{1,1}.
+
+
+operator Minj : Bool -> Matrix_{1,1}.
+
+adversary A1 : (()) -> (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}).
+
+oracle KeyGen : List_{d} Matrix_{1,1} -> Matrix_{1,m+m}.
+
+adversary A2 : (Matrix_{1,m} * List_{d} Matrix_{1,m} * Matrix_{1,1}) -> Bool.
+    
+
+(* TO ASK: It seems like the message space for this scheme is over bits. if this is true, I only need one oracle query phase? *)
+
+bound_succ [
+  (* commit ID *)
+  ws <- A1(());
+
+  (* setup *)
+  tgr <-$ BS_tgr;
+  let A = TrapGen(tgr)#0;
+  let TA = TrapGen(tgr)#1;
+    Bs <-$ List_{d} Matrix_{n,m};
+    u <-$ Matrix_{n,1};
+
+  (* encrypt bit *)
+  b <-$ Bool;
+  let w = b?ws#0:ws#1;
+    s <-$ Matrix_{n,1};
+    Rs <-$ List_{d} Matrix_{m,m};
+    chir0 <-$ BS_chi0;
+  let e0 = Chi0(chir0);
+  chir1 <-$ BS_chi1;
+  let e1 = Chi1(chir1);
+  let c1 = tr s * A;
+  let c2 = ([tr s]_{d}) * (Bs + (Scale(w, [Gadg(())]_{d}))) + [e0]_{d} * Rs;
+  let c3 = tr s * u + e1 + Minj(b);
+
+  (* adv query *)
+  b' <- A2 (c1,c2,c3) with
+  KeyGen (v) = {
+    guard (IP(v,ws#0) <> 0_{1,1});
+    guard (IP(v,ws#1) <> 0_{1,1});
+    let Bv = Sum(Bs * GadgConj(v));
+    slr <-$ BS_sl;
+    return SampleLeft (slr, A, Bv, TA, u);
+    };
+  
+
+  ] : b = b'.
+  
+  norm.
+  assumption_decisional! LWE -> .
+  

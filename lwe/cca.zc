@@ -28,9 +28,7 @@ assumption LHL
     let se = Invert (Au, Rinj(r), ct#1);
     let v = ct#1 - se#1;
     return Decode ((Rinj(r) || I_{m,m}) * tr v);
-    };
-
-]
+  }; ]
 [
   A <-$ Matrix_{n,m};
   U <-$ Matrix_{n,m};
@@ -43,7 +41,6 @@ assumption LHL
     let v = ct#1 - se#1;
     return Decode ((Rinj(r) || I_{m,m}) * tr v);
     };
-
 ].
   
 adversary lwe_adv : (Matrix_{n,m+m} * Matrix_{1,m+m}) -> Bool.
@@ -59,13 +56,11 @@ assumption LWE
     b <- lwe_adv (AU, u);
   ].
   
-
 bound_adv [
   A <-$ Matrix_{n,m};
   r <-$ BS_randr;
   let R = Rinj(r);
   let A1 = - (A * R);
-
   p <- Adv0 (A, A1) with
   dec_orcl (ct) = {
     let Au = A || (A1 + M(ct#0) * (Gadg (())));
@@ -74,7 +69,6 @@ bound_adv [
     let v = ct#1 - se#1;
     return Decode ((R || I_{m,m}) * tr v);
     };
-
   b <-$ Bool;
   let m = b ? p#0 : p#1;
     s <-$ Matrix_{1,n};

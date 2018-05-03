@@ -111,15 +111,12 @@ bound_adv [
   
   (*  b' <- A3(challenge ciphertext of b) with KG oracle *)
   ] : b = b'.
-  (*norm.*)
 
   (* H1: rewrite A1 into A*R - Hid'*B  *)
   move tgrA 1.
   move rinjr 2.
-
   move B 1.
   rnd A1 (A1 -> A1 - IdHash(i') * B) (A1 -> A1 + IdHash(i') * B).
-  (*norm.*)
   move B 6.
   unfold u__.
   rename A1 a1t.

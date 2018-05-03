@@ -1,6 +1,3 @@
-(* This proof is largely identical to the ABB proof, and the issues of deducibility there show up here as well. *)
-
-
 (* ListTail(A, ids) returns the tail of A after the IDs are bot. *)
 operator ListTail : (List_{d} Matrix_{n,m} * List_{d} BS_id) -> List_{d} Matrix_{n,m}.
 
@@ -13,8 +10,6 @@ adversary Adv_LWE : (Matrix_{n,m+1} * Matrix_{m+1,1}) -> Bool.
 assumption LWE
 [ A <-$ Matrix_{n,m+1}; s <-$ Matrix_{n,1}; chir0 <-$ BS_chi0; chir1 <-$ BS_chi1; b <- Adv_LWE (A, (tr A) * s + tr (tr Chi0(chir0) || tr Chi1(chir1)));]
 [ A <-$ Matrix_{n,m+1}; u <-$ Matrix_{m+1,1}; b <- Adv_LWE(A,u);].
-
-
 
 type sktype.
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * sktype).
