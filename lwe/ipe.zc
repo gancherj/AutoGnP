@@ -3,6 +3,7 @@ operator Chi0 : BS_chi0 -> Matrix_{1,m}.
 operator Chi1 : BS_chi1 -> Matrix_{1,1}.
 
 adversary ALWE : (Matrix_{n,m+1} * Matrix_{1,m+1}) -> Bool.
+
 assumption LWE [
   A <-$ Matrix_{n,m + 1};
   s <-$ Matrix_{n,1};
@@ -16,18 +17,63 @@ assumption LWE [
     b <- ALWE(A, U);
     ].
   
+      
 
-operator Gadg: (()) -> Matrix_{n,m}.
+operator Gadg: (()) -> Matrix_{n,m}. 
+operator TG : (()) -> Matrix_{m,m}.
+operator GadgConj : List_{d} Matrix_{1,1} -> List_{d} Matrix_{m,m}.
 
 operator Scale : (List_{d} Matrix_{1,1} * List_{d} Matrix_{n,m}) -> List_{d} Matrix_{n,m}.
-operator GadgConj : List_{d} Matrix_{1,1} -> List_{d} Matrix_{m,m}.
+operator Scale2 : (Matrix_{1,1} * Matrix_{n,m}) -> Matrix_{n,m}.
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
 operator SampleLeft : (BS_sl * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,1}) ->  Matrix_{1,m+m}.
-operator SampleRight : (BS_sr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{m,m} * Matrix_{1,n}) -> Matrix_{1,m + m}.
+operator SampleRight : (BS_sr * Matrix_{n,m} * Matrix_{m,m} * Matrix_{n,m} * Matrix_{m,m} * Matrix_{1,n}) -> Matrix_{1,m + m}.
 
+
+adversary A1 : (()) -> (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}).
+adversary ASL1 : (()) -> (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}).
+oracle KeyGen : List_{d} Matrix_{1,1} -> Matrix_{1,m+m}.
+oracle SL_SR_O : List_{d} Matrix_{1,1} -> Matrix_{1,m+m}.
+
+    
+  
+
+
+  
+
+adversary AdvLLHL : (List_{d} Matrix_{n,m} * List_{d} Matrix_{m,m} * Matrix_{n,m} * Matrix_{m,m}) -> Bool.
+assumption LLHL [
+  tgr <-$ BS_tgr;
+  Bs <-$ List_{d} Matrix_{n,m};
+  Rs <-$ List_{d} Matrix_{m,m};
+  b <- AdvLLHL (Bs, Rs, TrapGen(tgr)#0, TrapGen(tgr)#1);
+]
+[
+  tgr <-$ BS_tgr;
+  Rs <-$ List_{d} Matrix_{m,m};
+  b <- AdvLLHL ([TrapGen(tgr)#0]_{d} * Rs, Rs, TrapGen(tgr)#0, TrapGen(tgr)#1);
+  ].
+  
+
+adversary AdvLLHL2 : (Matrix_{n,m} * List_{d} Matrix_{n,m} * List_{d} Matrix_{m,m}) -> Bool.
+assumption LLHL2 [
+  A <-$ Matrix_{n,m};
+  Rs <-$ List_{d} Matrix_{m,m};
+  b <- AdvLLHL2 (A, [A]_{d} * Rs, Rs);
+]
+[
+  A <-$ Matrix_{n,m};
+  Rs <-$ List_{d} Matrix_{m,m};
+  Us <-$ List_{d} Matrix_{n,m};
+  b <- AdvLLHL2 (A, Us, Rs);
+  ].
+  
+    
 
 operator Sum : List_{d} Matrix_{n,m} -> Matrix_{n,m}.
+operator Sum1 : List_{d} Matrix_{m,m} -> Matrix_{m,m}.
+operator Sum2 : List_{d} Matrix_{1,1} -> Matrix_{1,1}.
 
 
 operator IP : (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}) -> Matrix_{1,1}.
@@ -35,16 +81,51 @@ operator IP : (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}) -> Matrix_{1,1}.
 
 operator Minj : Bool -> Matrix_{1,1}.
 
-adversary A1 : (()) -> (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}).
 
-oracle KeyGen : List_{d} Matrix_{1,1} -> Matrix_{1,m+m}.
+adversary adv_SL_SR : (Matrix_{n,m} * (List_{d} Matrix_{1,1} * List_{d} Matrix_{1,1}) * List_{d} Matrix_{m,m} * Bool) -> Bool.
 
-adversary A2 : (Matrix_{1,m} * List_{d} Matrix_{1,m} * Matrix_{1,1}) -> Bool.
+adversary A2 : (Matrix_{n,m} *
+  List_{d} Matrix_{n,m} *
+  Matrix_{n,1} *
+  Matrix_{1,m} * List_{d} Matrix_{1,m} * Matrix_{1,1}) -> Bool.
+
+
     
+assumption dec_SL_SR [
+  tgr <-$ BS_tgr;
+  Rs <-$ List_{d} Matrix_{m,m};
+  u <-$ Matrix_{n,1};
+  bc <-$ Bool;
+  ws <- ASL1();
+  b <- adv_SL_SR (TrapGen(tgr)#0, ws, Rs, bc) with
+   SL_SR_O(v) = {
+      guard (IP(v,ws#0) <> 0_{1,1});
+      guard (IP(v,ws#1) <> 0_{1,1});
+      slr <-$ BS_sl;
+      return SampleLeft(slr,TrapGen(tgr)#0,
+                        Sum(-((Scale(bc?ws#0:ws#1,[Gadg(())]_{d})
+                               * GadgConj(v)))
+                            + ([TrapGen(tgr)#0]_{d} * Rs * GadgConj(v))),
+                        TrapGen(tgr)#1,u); };
+]
+[
+  A <-$ Matrix_{n,m};
+  Rs <-$ List_{d} Matrix_{m,m};
+  u <-$ Matrix_{n,1};
+  bc <-$ Bool;
+  ws <- ASL1();
+  b <- adv_SL_SR (A, ws, Rs, bc) with
+  SL_SR_O(v) = {
+    guard (IP(v, ws#0) <> 0_{1,1});
+    guard (IP(v, ws#0) <> 0_{1,1});
+    srr <-$ BS_sr;
+    (* TODO: I changed b?ws#0:ws#1 to just ws#0. I think this is okay because of how sampleright works. I should ask leo if this entire term can just be G instead of w dot v * G. *)
+    return SampleRight(srr, A, Sum1(Rs * GadgConj(v)), Scale2(Sum2(ws#0 * v), Gadg(())), TG(()), tr u);
+    };
+].
 
-(* TO ASK: It seems like the message space for this scheme is over bits. if this is true, I only need one oracle query phase? *)
 
-bound_succ [
+bound_adv [
   (* commit ID *)
   ws <- A1(());
 
@@ -64,12 +145,12 @@ bound_succ [
   let e0 = Chi0(chir0);
   chir1 <-$ BS_chi1;
   let e1 = Chi1(chir1);
-  let c1 = tr s * A;
+  let c1 = tr s * A + e0;
   let c2 = ([tr s]_{d}) * (Bs + (Scale(w, [Gadg(())]_{d}))) + [e0]_{d} * Rs;
   let c3 = tr s * u + e1 + Minj(b);
 
   (* adv query *)
-  b' <- A2 (c1,c2,c3) with
+  b' <- A2 (A, Bs, u, c1,c2,c3) with
   KeyGen (v) = {
     guard (IP(v,ws#0) <> 0_{1,1});
     guard (IP(v,ws#1) <> 0_{1,1});
@@ -80,7 +161,73 @@ bound_succ [
   
 
   ] : b = b'.
-  
+  move 5 13.
+  rnd Bs (Bs -> Bs - Scale(w,[Gadg(())]_{d})) (Bs -> Bs + Scale(w,[Gadg(())]_{d})).
+  unfold u__.
+  //=.
   norm.
+  move tgr 1.
+  move Bs 2.
+  move Rs 3.
+  assumption_decisional! LLHL -> ; //.
+
+  move u 3.
+  move b 4.
+
+  abstract 5 tt0 ().
+  abstract 7 res0 ws.
+
+  abstract 12 res1 (b = b').
+  abstract 8 tt1 (TrapGen(tgr)#0, res0, Rs, b).
+
+  hybrid (12,1) {
+    let v0 = v;
+  guard (IP(v0,res0#0) <> 0_{1,1});
+  guard (IP(v0,res0#1) <> 0_{1,1});
+  slr <-$ BS_sl;
+  let r =  SampleLeft(slr,TrapGen(tgr)#0,
+                                  Sum(-((Scale(b?res0#0:res0#1,[Gadg(())]_{d})
+                                         * GadgConj(v0)))
+                                      + ([TrapGen(tgr)#0]_{d} * Rs * GadgConj(v0))),
+                                  TrapGen(tgr)#1,u); 
+  return r; }.
+    LR: norm.
+    dist_eq.
+
+  assumption_decisional * dec_SL_SR -> [
+    tgr,tgr; 
+    Rs, Rs;
+    ws, res0;
+    u,u;
+    bc,b;
+    b, res1;
+    SL_SR_O`slr, KeyGen`slr;
+    SL_SR_O`v, KeyGen`v0] 5 7 [] 8 13 [12 [(1 1 5 SL_SR_O)]].
+
+  norm.
+  move u 2.
+  mat_fold 1 2 Au.
+  move s 2.
+  move chir0 3.
+  move chir1 4.
+
   assumption_decisional! LWE -> .
-  
+  norm.
+  mat_unfold 1.
+  norm.
+  move 4 2.
+  (* TODO: I require an application of leftover hash lemma to get rid of w. *)
+  assumption_decisional! LLHL2 -> .
+  norm.
+  mat_unfold 5 R2 R3.
+  norm.
+  move b 1.
+  move ws 2.
+  rnd r__1 (x -> x + Scale(b?ws#0:ws#1, [Gadg(())]_{d})) (x -> x - Scale(b?ws#0:ws#1, [Gadg(())]_{d})).
+  norm.
+  rnd R3 (x -> x - Minj(b)) (x -> x + Minj(b)).
+  norm.
+  move b 8.
+  indep!.
+qed.
+
