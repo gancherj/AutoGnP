@@ -19,15 +19,6 @@ operator Rinj : BS_rinjr -> Matrix_{m,m}.
 
 operator TrapGen : BS_tgr -> (Matrix_{n,m} * Matrix_{m,m}).
 
-adversary Adv_LHL : (BS_tgr * Matrix_{n,m} * Matrix_{n,m} * Matrix_{1,m}) -> Bool.
-adversary Adv_LHLchoose : () -> Matrix_{1,m}.
-assumption LHL
-[ tgr <-$ BS_tgr; rinjr <-$ BS_rinjr; w <- Adv_LHLchoose();
-  b <- Adv_LHL(tgr , TrapGen(tgr)#0 ,TrapGen(tgr)#0 *Rinj(rinjr),
-    w * Rinj(rinjr));]
-[ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; B <-$ Matrix_{n,m}; w <- Adv_LHLchoose(); b <- Adv_LHL(tgr , TrapGen(tgr)#0,B, w * Rinj(rinjr));].
-
-
 adversary AdvGLHL_Choose : () -> Matrix_{1,m}.
 adversary AdvGLHL : (Matrix_{n,m} * Matrix_{1,m} * Matrix_{1,m} * Matrix_{n,m} * Matrix_{m,m}) -> Bool.
 assumption GLHL 
