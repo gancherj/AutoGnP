@@ -28,20 +28,20 @@ assumption LHL
 [ tgr <-$ BS_tgr;  rinjr <-$ BS_rinjr; B <-$ Matrix_{n,m}; w <- Adv_LHLchoose(); b <- Adv_LHL(tgr , TrapGen(tgr)#0,B, w * Rinj(rinjr));].
 
 
-adversary AdvGLLHL_Choose : () -> Matrix_{1,m}.
-adversary AdvGLLHL : (Matrix_{n,m} * Matrix_{1,m} * Matrix_{1,m} * Matrix_{n,m} * Matrix_{m,m}) -> Bool.
-assumption GLLHL 
+adversary AdvGLHL_Choose : () -> Matrix_{1,m}.
+adversary AdvGLHL : (Matrix_{n,m} * Matrix_{1,m} * Matrix_{1,m} * Matrix_{n,m} * Matrix_{m,m}) -> Bool.
+assumption GLHL 
 [
   tgr <-$ BS_tgr;
   rinjr <-$ BS_rinjr;
-  w <- AdvGLLHL_Choose();
-  b <- AdvGLLHL (TrapGen(tgr)#0 * Rinj(rinjr), w, w * Rinj(rinjr), TrapGen(tgr)#0, TrapGen(tgr)#1);
+  w <- AdvGLHL_Choose();
+  b <- AdvGLHL (TrapGen(tgr)#0 * Rinj(rinjr), w, w * Rinj(rinjr), TrapGen(tgr)#0, TrapGen(tgr)#1);
   ] [
   tgr <-$ BS_tgr;
   rinjr <-$ BS_rinjr;
   B <-$ Matrix_{n,m};
-  w <- AdvGLLHL_Choose();
-  b <- AdvGLLHL (B, w, w * Rinj(rinjr), TrapGen(tgr)#0, TrapGen(tgr)#1);
+  w <- AdvGLHL_Choose();
+  b <- AdvGLHL (B, w, w * Rinj(rinjr), TrapGen(tgr)#0, TrapGen(tgr)#1);
 
 ].
 
@@ -138,7 +138,7 @@ bound_adv [
   abstract 6 res0 (tr Chi0(chir0)).
   abstract 7 tt1 (A1, res0, res0 * Rinj(rinjr), TrapGen(tgrA)#0, TrapGen(tgrA)#1).
   abstract 16 res1 (b = b').
-  assumption_decisional GLLHL <- [tt0 res0] [tt1 res1].
+  assumption_decisional GLHL <- [tt0 res0] [tt1 res1].
   norm.
 
 
