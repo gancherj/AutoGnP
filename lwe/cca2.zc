@@ -50,13 +50,14 @@ assumption LHL
     let v = ct#1 - se#1;
     return Decode ((Rinj(r) || I_{m,m}) * tr v);
     }
+
   ,lhl_orcl2 (ct) = {
-    let Au = A || ((- A * Rinj(r)) + M(ct#0) * (Gadg (())));
-    guard (sr Au <> (- A * Rinj(r)));
+    let Au = A || ((- U) + M(ct#0) * (Gadg (())));
+    guard (sr Au <> (- U));
     let se = Invert (Au, Rinj(r), ct#1);
     let v = ct#1 - se#1;
     return Decode ((Rinj(r) || I_{m,m}) * tr v);
-  };
+    }; 
 ].
   
 adversary lwe_adv : (Matrix_{n,m+m} * Matrix_{1,m+m}) -> Bool.
